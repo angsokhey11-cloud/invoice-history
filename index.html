@@ -534,6 +534,30 @@
       .history-final-bottom-grid{grid-template-columns:1fr}.history-final-transaction{grid-template-columns:1fr 1fr}
     }
 
+
+    /* Invoice row action menu */
+    .action-cell{position:relative;text-align:center;overflow:visible!important}
+    .action-menu-btn{width:32px;height:32px;border:0;border-radius:8px;background:#eef3f8;color:#17457a;font-size:20px;font-weight:800;line-height:1;cursor:pointer}
+    .action-menu-btn:hover{background:#dfe9f5}
+    .row-action-menu{display:none;position:absolute;right:10px;top:39px;z-index:80;width:150px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(16,42,67,.18);padding:6px;text-align:left}
+    .row-action-menu.show{display:block}
+    .row-action-menu button{width:100%;border:0;background:transparent;padding:10px 11px;border-radius:7px;text-align:left;font-size:13px;font-weight:700;cursor:pointer;color:var(--text)}
+    .row-action-menu button:hover{background:#f2f6fb}.row-action-menu .danger{color:#c62828}.row-action-menu .print{color:#18864b}
+
+    /* Edit invoice modal */
+    .edit-modal{z-index:1200}.edit-card{width:min(980px,100%)}
+    .edit-body{padding:18px 20px 20px}.edit-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .edit-field label{display:block;margin-bottom:5px;color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase}
+    .edit-field input,.edit-field select,.edit-field textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 10px;font:inherit;color:var(--text);background:#fff}
+    .edit-field textarea{min-height:72px;resize:vertical}.edit-span-2{grid-column:span 2}.edit-span-3{grid-column:span 3}
+    .edit-items-wrap{overflow-x:auto;margin-top:16px}.edit-items-table{width:100%;min-width:720px;border-collapse:collapse}
+    .edit-items-table th,.edit-items-table td{padding:8px;border-bottom:1px solid #e6edf5;font-size:12px}.edit-items-table th{background:#f5f8fc;color:#53657d}
+    .edit-items-table input{width:100%;min-width:80px;padding:7px;border:1px solid var(--border);border-radius:7px;text-align:right}
+    .edit-total-box{margin:14px 0 0 auto;width:min(360px,100%);background:#f7f9fc;border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+    .edit-total-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}.edit-total-row.grand{font-size:15px;font-weight:800;border-top:2px solid var(--navy);margin-top:4px;padding-top:8px}
+    .edit-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}.edit-save{background:#17457a;color:#fff}.edit-cancel{background:#e8eef6;color:#17457a}
+    @media(max-width:720px){.edit-grid{grid-template-columns:1fr}.edit-span-2,.edit-span-3{grid-column:span 1}.edit-body{padding:14px}.edit-actions{flex-direction:column-reverse}.edit-actions .btn{width:100%}.row-action-menu{right:4px}}
+
   </style>
 </head>
 
@@ -636,12 +660,13 @@
               <th>Paid</th>
               <th>Outstanding</th>
               <th>Status</th>
+              <th style="text-align:center;width:58px;">Actions</th>
             </tr>
           </thead>
 
           <tbody id="invoiceBody">
             <tr>
-              <td colspan="10" class="empty">
+              <td colspan="11" class="empty">
                 Loading invoice history...
               </td>
             </tr>
@@ -669,6 +694,39 @@
         <button type="button" class="history-action-btn history-save-btn" onclick="saveHistoryInvoiceToDevice(event)">📱 Save to Device</button>
         <button type="button" class="history-action-btn history-telegram-btn" onclick="shareHistoryInvoiceToTelegram(event)">✈️ Share to Telegram</button>
       </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Edit Invoice Modal -->
+<div id="editModal" class="modal edit-modal" onclick="editModalBackdrop(event)">
+  <div class="modal-card edit-card">
+    <div class="modal-head">
+      <h2 id="editTitle">Edit Invoice</h2>
+      <button class="close" type="button" onclick="closeEditInvoice()">×</button>
+    </div>
+    <div id="editLoading" class="loading" style="padding:22px;">Loading invoice...</div>
+    <div id="editContent" class="edit-body" style="display:none;">
+      <div class="edit-grid">
+        <div class="edit-field"><label>Invoice No</label><input id="editInvoiceNo" readonly></div>
+        <div class="edit-field"><label>Invoice Date</label><input id="editInvoiceDate" type="date"></div>
+        <div class="edit-field"><label>Customer</label><input id="editCustomer"></div>
+        <div class="edit-field"><label>Salesperson</label><input id="editSalesperson"></div>
+        <div class="edit-field"><label>Payment Method</label><select id="editPaymentMethod" onchange="recalcEditInvoice()"><option>Cash</option><option>Bank</option><option>Credit</option><option>Partially Paid in Cash</option><option>Partially Paid in Bank</option></select></div>
+        <div class="edit-field"><label>Currency</label><select id="editCurrency" onchange="recalcEditInvoice()"><option>USD</option><option>KHR</option></select></div>
+        <div class="edit-field"><label>Exchange Rate</label><input id="editExchangeRate" type="number" step="0.01"></div>
+        <div class="edit-field"><label>Discount</label><input id="editDiscount" type="number" min="0" step="0.01" oninput="recalcEditInvoice()"></div>
+        <div class="edit-field"><label>Amount Paid</label><input id="editAmountPaid" type="number" min="0" step="0.01" oninput="recalcEditInvoice()"></div>
+        <div class="edit-field"><label>Due Date</label><input id="editDueDate" type="date"></div>
+        <div class="edit-field"><label>Bank Payment</label><input id="editBankPayment"></div>
+        <div class="edit-field"><label>Bank Reference</label><input id="editBankReference"></div>
+        <div class="edit-field"><label>Batch Number</label><input id="editBatchNumber"></div>
+        <div class="edit-field edit-span-2"><label>Note</label><textarea id="editNote"></textarea></div>
+      </div>
+      <div class="edit-items-wrap"><table class="edit-items-table"><thead><tr><th>Product Code</th><th>Description / Unit</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody id="editItemsBody"></tbody></table></div>
+      <div class="edit-total-box"><div class="edit-total-row"><span>Subtotal</span><strong id="editSubtotal">0.00</strong></div><div class="edit-total-row"><span>Discount</span><strong id="editDiscountDisplay">0.00</strong></div><div class="edit-total-row grand"><span>Grand Total</span><strong id="editGrandTotal">0.00</strong></div><div class="edit-total-row"><span>Amount Paid</span><strong id="editPaidDisplay">0.00</strong></div><div class="edit-total-row"><span>Outstanding</span><strong id="editOutstanding">0.00</strong></div></div>
+      <div class="edit-actions"><button class="btn edit-cancel" type="button" onclick="closeEditInvoice()">Cancel</button><button id="editSaveBtn" class="btn edit-save" type="button" onclick="saveEditedInvoice()">Save Changes</button></div>
     </div>
   </div>
 </div>
@@ -779,7 +837,7 @@
       "Loading...";
 
     $("invoiceBody").innerHTML =
-      '<tr><td colspan="10" class="empty">Loading invoice history...</td></tr>';
+      '<tr><td colspan="11" class="empty">Loading invoice history...</td></tr>';
 
     try {
 
@@ -819,7 +877,7 @@
       );
 
       $("invoiceBody").innerHTML =
-        '<tr><td colspan="10" class="empty">Unable to load invoice history.</td></tr>';
+        '<tr><td colspan="11" class="empty">Unable to load invoice history.</td></tr>';
 
       $("summaryCount").textContent =
         "0 invoices";
@@ -833,92 +891,39 @@
 
 
   function renderInvoices(invoices) {
-
-    $("summaryCount").textContent =
-      invoices.length +
-      (invoices.length === 1
-        ? " invoice"
-        : " invoices");
-
+    $("summaryCount").textContent = invoices.length + (invoices.length === 1 ? " invoice" : " invoices");
     if (!invoices.length) {
-
-      $("invoiceBody").innerHTML =
-        '<tr><td colspan="10" class="empty">No invoices found.</td></tr>';
-
+      $("invoiceBody").innerHTML = '<tr><td colspan="11" class="empty">No invoices found.</td></tr>';
       return;
     }
-
-    $("invoiceBody").innerHTML =
-      invoices.map(invoice => {
-
-        const type =
-          String(invoice.invoiceType || "")
-            .toLowerCase();
-
-        const badgeClass =
-          type === "credit"
-            ? "badge-credit"
-            : "badge-paid";
-
-        const badgeText =
-          invoice.invoiceType ||
-          invoice.status ||
-          "";
-
-        return `
-          <tr>
-
-            <td>
-              <a
-                class="invoice-link"
-                href="#"
-                onclick="openDetail('${escapeHtml(invoice.invoiceNo)}'); return false;"
-              >
-                ${escapeHtml(invoice.invoiceNo)}
-              </a>
-            </td>
-
-            <td>
-              ${escapeHtml(invoice.invoiceDate || "")}
-            </td>
-
-            <td>
-              ${escapeHtml(invoice.customer || "")}
-            </td>
-
-            <td>
-              ${escapeHtml(invoice.salesperson || "")}
-            </td>
-
-            <td>
-              ${escapeHtml(invoice.paymentMethod || "")}
-            </td>
-
-            <td>
-              ${escapeHtml(invoice.currency || "")}
-            </td>
-
-            <td class="money">
-              ${money(invoice.grandTotal, "")}
-            </td>
-
-            <td class="money">
-              ${money(invoice.amountPaid, "")}
-            </td>
-
-            <td class="money">
-              ${money(invoice.outstanding, "")}
-            </td>
-
-            <td>
-              <span class="badge ${badgeClass}">
-                ${escapeHtml(badgeText)}
-              </span>
-            </td>
-
-          </tr>
-        `;
-      }).join("");
+    $("invoiceBody").innerHTML = invoices.map(invoice => {
+      const type = String(invoice.invoiceType || "").toLowerCase();
+      const badgeClass = type === "credit" ? "badge-credit" : "badge-paid";
+      const badgeText = invoice.invoiceType || invoice.status || "";
+      const no = escapeHtml(invoice.invoiceNo);
+      const jsNo = JSON.stringify(String(invoice.invoiceNo || ""));
+      return `<tr>
+        <td><a class="invoice-link" href="#" onclick='openDetail(${jsNo}); return false;'>${no}</a></td>
+        <td>${escapeHtml(invoice.invoiceDate || "")}</td>
+        <td>${escapeHtml(invoice.customer || "")}</td>
+        <td>${escapeHtml(invoice.salesperson || "")}</td>
+        <td>${escapeHtml(invoice.paymentMethod || "")}</td>
+        <td>${escapeHtml(invoice.currency || "")}</td>
+        <td class="money">${money(invoice.grandTotal, "")}</td>
+        <td class="money">${money(invoice.amountPaid, "")}</td>
+        <td class="money">${money(invoice.outstanding, "")}</td>
+        <td><span class="badge ${badgeClass}">${escapeHtml(badgeText)}</span></td>
+        <td class="action-cell">
+          <button class="action-menu-btn" type="button" aria-label="Invoice actions" onclick="toggleRowActions(event,this)">⋮</button>
+          <div class="row-action-menu">
+            <button type="button" onclick='openDetail(${jsNo}); closeRowActions();'>👁 View</button>
+            <button type="button" onclick='openEditInvoice(${jsNo}); closeRowActions();'>✏️ Edit</button>
+            <button type="button" class="print" onclick='printInvoiceFromRow(${jsNo}); closeRowActions();'>🖨 Print</button>
+            <button type="button" class="danger" onclick='deleteInvoiceFromHistory(${jsNo}); closeRowActions();'>🗑 Delete</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
   }
 
 
@@ -1137,6 +1142,68 @@
 
   async function shareHistoryInvoiceToTelegram(event){if(event){event.preventDefault();event.stopPropagation();}const button=event?.currentTarget,oldText=button?.innerHTML||"";try{if(button){button.disabled=true;button.innerHTML="⏳ Preparing...";}const blob=await createHistoryInvoiceImage();const invoiceNo=currentHistoryInvoice?.invoiceNo||"Invoice";const customer=currentHistoryInvoice?.customer||"Customer";const safeInvoice=historySafeFileName(invoiceNo,"Invoice");const file=new File([blob],`BIG-BROTHER-${safeInvoice}.png`,{type:"image/png"});const text=`BIG BROTHER Invoice ${invoiceNo}\nCustomer: ${customer}`;const mobileDevice=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);const touchDevice="ontouchstart" in window||navigator.maxTouchPoints>0;const isMobile=mobileDevice||touchDevice;if(isMobile){if(!navigator.share){alert("Your browser does not support sharing invoice pictures. Please use Chrome or Safari with Telegram installed.");return;}try{if(navigator.canShare&&!navigator.canShare({files:[file]}))throw new Error("This browser cannot share image files.");await navigator.share({files:[file],title:"BIG BROTHER Invoice"});return;}catch(e){if(e?.name==="AbortError")return;console.warn("Image share failed:",e);}try{await navigator.share({title:"BIG BROTHER Invoice",text,files:[file]});return;}catch(e){if(e?.name==="AbortError")return;console.warn("Combined share failed:",e);}try{await navigator.share({title:"BIG BROTHER Invoice",text});return;}catch(e){if(e?.name==="AbortError")return;throw e;}}if(navigator.clipboard&&window.ClipboardItem){try{await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);window.open("https://web.telegram.org/","_blank","noopener");alert("Invoice picture copied. Open the customer chat in Telegram and press Ctrl+V.");return;}catch(e){console.warn("Clipboard image copy failed:",e);}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`BIG-BROTHER-${safeInvoice}.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);window.open("https://web.telegram.org/","_blank","noopener");alert("Invoice picture saved. Attach the saved picture in Telegram.");}catch(error){if(error?.name==="AbortError")return;console.error("Telegram share failed:",error);alert("Could not share the invoice picture. Please try again.");}finally{if(button){button.disabled=false;button.innerHTML=oldText;}}}
 
+
+  function closeRowActions(){document.querySelectorAll(".row-action-menu.show").forEach(x=>x.classList.remove("show"));}
+  function toggleRowActions(event,button){event.stopPropagation();const menu=button.nextElementSibling;const wasOpen=menu.classList.contains("show");closeRowActions();if(!wasOpen)menu.classList.add("show");}
+  document.addEventListener("click",closeRowActions);
+
+  async function getHistoryInvoice(invoiceNo){
+    const data=await fetchApi({action:"invoiceDetail",invoiceNo});
+    if(!data.invoice) throw new Error("Invoice detail was not returned.");
+    await enrichHistoryInvoiceFromMaster(data.invoice);
+    return data.invoice;
+  }
+
+  async function printInvoiceFromRow(invoiceNo){
+    try{const invoice=await getHistoryInvoice(invoiceNo);currentHistoryInvoice=invoice;const old=$("historyInvoicePrintArea").innerHTML;$("historyInvoicePrintArea").innerHTML=buildHistoryInvoiceHtml(invoice);printHistoryInvoice();$("historyInvoicePrintArea").innerHTML=old;}
+    catch(error){showError(error.message||"Unable to print invoice.");}
+  }
+
+  let currentEditInvoice=null;
+  async function openEditInvoice(invoiceNo){
+    hideError();$("editModal").classList.add("show");$("editTitle").textContent="Edit Invoice "+invoiceNo;$("editLoading").style.display="block";$("editLoading").textContent="Loading invoice...";$("editContent").style.display="none";
+    try{const invoice=await getHistoryInvoice(invoiceNo);currentEditInvoice=invoice;populateEditInvoice(invoice);$("editLoading").style.display="none";$("editContent").style.display="block";}
+    catch(error){$("editLoading").textContent=error.message||"Unable to load invoice.";}
+  }
+
+  function isoDateOnly(value){const m=String(value||"").match(/^(\d{4}-\d{2}-\d{2})/);return m?m[1]:"";}
+  function populateEditInvoice(invoice){
+    $("editInvoiceNo").value=invoice.invoiceNo||"";$("editInvoiceDate").value=isoDateOnly(invoice.invoiceDate);$("editCustomer").value=invoice.customer||"";$("editSalesperson").value=invoice.salesperson||"";$("editPaymentMethod").value=invoice.paymentMethod||"Cash";$("editCurrency").value=invoice.currency||"USD";$("editExchangeRate").value=numberValue(invoice.exchangeRate)||4060;$("editDiscount").value=numberValue(invoice.discount);$("editAmountPaid").value=numberValue(invoice.amountPaid);$("editDueDate").value=isoDateOnly(invoice.dueDate);$("editBankPayment").value=invoice.bankPayment||"";$("editBankReference").value=invoice.bankReference||"";$("editBatchNumber").value=invoice.batchNumber||"";$("editNote").value=invoice.note||"";
+    const items=Array.isArray(invoice.items)?invoice.items:[];
+    $("editItemsBody").innerHTML=items.map((item,index)=>`<tr data-edit-index="${index}"><td>${escapeHtml(item.productCode||"")}</td><td><strong>${escapeHtml(item.productName||item.productCode||"")}</strong>${item.unit?`<br><small>${escapeHtml(item.unit)}</small>`:""}</td><td><input class="edit-item-qty" type="number" min="0" step="0.01" value="${numberValue(item.qty)}" oninput="recalcEditInvoice()"></td><td><input class="edit-item-price" type="number" min="0" step="0.01" value="${numberValue(item.price)}" oninput="recalcEditInvoice()"></td><td class="money edit-item-total">0.00</td></tr>`).join("");
+    recalcEditInvoice();
+  }
+
+  function recalcEditInvoice(){
+    if(!currentEditInvoice)return;let subtotal=0;
+    document.querySelectorAll("#editItemsBody tr").forEach((tr,index)=>{const qty=Math.max(0,numberValue(tr.querySelector(".edit-item-qty")?.value));const price=Math.max(0,numberValue(tr.querySelector(".edit-item-price")?.value));const total=qty*price;subtotal+=total;const cell=tr.querySelector(".edit-item-total");if(cell)cell.textContent=total.toFixed(2);});
+    const discount=Math.min(subtotal,Math.max(0,numberValue($("editDiscount").value)));const grand=Math.max(0,subtotal-discount);const method=$("editPaymentMethod").value;let paid=Math.max(0,numberValue($("editAmountPaid").value));if(method==="Cash"||method==="Bank")paid=grand;else if(method==="Credit")paid=0;else paid=Math.min(paid,grand);$("editAmountPaid").value=paid.toFixed(2);const outstanding=Math.max(0,grand-paid);$("editSubtotal").textContent=subtotal.toFixed(2);$("editDiscountDisplay").textContent=discount.toFixed(2);$("editGrandTotal").textContent=grand.toFixed(2);$("editPaidDisplay").textContent=paid.toFixed(2);$("editOutstanding").textContent=outstanding.toFixed(2);
+    return {subtotal,discount,grandTotal:grand,amountPaid:paid,outstanding};
+  }
+
+  function buildEditPayload(){
+    const totals=recalcEditInvoice();const items=(currentEditInvoice.items||[]).map((item,index)=>{const tr=document.querySelector(`#editItemsBody tr[data-edit-index="${index}"]`);const qty=Math.max(0,numberValue(tr?.querySelector(".edit-item-qty")?.value));const price=Math.max(0,numberValue(tr?.querySelector(".edit-item-price")?.value));return {productCode:item.productCode,qty,unitPrice:price,amount:qty*price};}).filter(x=>x.qty>0);
+    return {invoiceId:currentEditInvoice.invoiceId,invoiceNo:currentEditInvoice.invoiceNo,invoiceDate:$("editInvoiceDate").value,customer:$("editCustomer").value.trim(),salesperson:$("editSalesperson").value.trim(),paymentMethod:$("editPaymentMethod").value,currency:$("editCurrency").value,exchangeRate:numberValue($("editExchangeRate").value),subtotal:totals.subtotal,discount:totals.discount,grandTotal:totals.grandTotal,amountPaid:totals.amountPaid,outstanding:totals.outstanding,dueDate:$("editDueDate").value,bankPayment:$("editBankPayment").value.trim(),bankReference:$("editBankReference").value.trim(),batchNumber:$("editBatchNumber").value.trim(),note:$("editNote").value.trim(),items};
+  }
+
+  function postHistoryAction(action,fieldName,payload){
+    return new Promise((resolve,reject)=>{const frameName="bbHistoryWrite_"+Date.now()+"_"+Math.random().toString(36).slice(2);const iframe=document.createElement("iframe");iframe.name=frameName;iframe.style.display="none";document.body.appendChild(iframe);const form=document.createElement("form");form.method="POST";form.action=SALES_DATABASE_URL;form.target=frameName;form.style.display="none";const a=document.createElement("input");a.type="hidden";a.name="action";a.value=action;form.appendChild(a);const d=document.createElement("input");d.type="hidden";d.name=fieldName;d.value=JSON.stringify(payload);form.appendChild(d);document.body.appendChild(form);try{form.submit();}catch(e){form.remove();iframe.remove();reject(e);return;}setTimeout(()=>{form.remove();iframe.remove();resolve();},2800);});
+  }
+
+  async function saveEditedInvoice(){
+    if(!currentEditInvoice)return;const payload=buildEditPayload();if(!payload.customer||!payload.salesperson||!payload.invoiceDate||!payload.items.length){alert("Invoice Date, Customer, Salesperson and at least one item are required.");return;}if(!confirm("Save changes to "+payload.invoiceNo+"?\n\nThis will update the Sales Database."))return;const btn=$("editSaveBtn");const old=btn.innerHTML;btn.disabled=true;btn.innerHTML="⏳ Saving...";try{await postHistoryAction("updateInvoice","invoiceData",payload);closeEditInvoice();await loadInvoices();alert("Invoice "+payload.invoiceNo+" update request was sent to Sales Database.");}catch(error){alert("Could not update invoice.\n\n"+(error.message||"Please try again."));}finally{btn.disabled=false;btn.innerHTML=old;}
+  }
+
+  async function deleteInvoiceFromHistory(invoiceNo){
+    const typed=prompt("DELETE INVOICE\n\nThis will remove the invoice, its Invoice Item row, and related Payment/Return rows.\n\nType the Invoice No. to confirm:\n"+invoiceNo);
+    if(typed===null)return;if(String(typed).trim().toLowerCase()!==String(invoiceNo).trim().toLowerCase()){alert("Invoice No. did not match. Nothing was deleted.");return;}
+    if(!confirm("Final confirmation: permanently delete "+invoiceNo+"?"))return;
+    try{await postHistoryAction("deleteInvoice","deleteData",{invoiceNo});await loadInvoices();alert("Delete request for "+invoiceNo+" was sent to Sales Database.");}catch(error){alert("Could not delete invoice.\n\n"+(error.message||"Please try again."));}
+  }
+
+  function closeEditInvoice(){$("editModal").classList.remove("show");currentEditInvoice=null;}
+  function editModalBackdrop(event){if(event.target===$("editModal"))closeEditInvoice();}
+
   function closeDetail() {
 
     $("detailModal").classList.remove("show");
@@ -1170,6 +1237,8 @@
     }
   );
 
+
+  document.addEventListener("keydown", event => { if(event.key === "Escape" && $("editModal").classList.contains("show")) closeEditInvoice(); });
 
   /*
    * Load newest invoices when page opens.
