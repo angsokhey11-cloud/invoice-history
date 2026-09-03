@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BIG BROTHER — Invoice History</title>
+  <title>BIG BROTHER — Invoice History Workspace</title>
   <!-- V4.6.2: global dashboard navigation + clickable company brand -->
 
   <style>
@@ -577,45 +577,39 @@
     .edit-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}.edit-save{background:#17457a;color:#fff}.edit-cancel{background:#e8eef6;color:#17457a}
     @media(max-width:720px){.edit-grid{grid-template-columns:1fr}.edit-span-2,.edit-span-3{grid-column:span 1}.edit-body{padding:14px}.edit-actions{flex-direction:column-reverse}.edit-actions .btn{width:100%}}
 
+  
+    /* =====================================================
+       WORKSPACE MODE
+       This page is designed to live inside BIG BROTHER shell.
+       ===================================================== */
+    .app { display:block !important; min-height:100vh; }
+    .main {
+      margin-left:0 !important;
+      width:100% !important;
+      min-height:100vh;
+      padding:28px !important;
+    }
+    @media (max-width:720px) {
+      .main { margin-left:0 !important; width:100% !important; padding:14px !important; }
+    }
+
   </style>
 </head>
 
 <body>
+
+<script>
+  // If someone opens Invoice History directly, bring them into the permanent dashboard shell.
+  if (window.top === window.self) {
+    const shellUrl = "https://angsokhey11-cloud.github.io/big-brother-dashboard/?module=history";
+    if (location.href !== shellUrl) location.replace(shellUrl);
+  }
+</script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <div class="app">
-
-  <aside class="sidebar">
-    <div class="brand">
-      <a class="brand-link" href="https://angsokhey11-cloud.github.io/big-brother-dashboard/" title="Go to BIG BROTHER Dashboard">
-        <div class="brand-title">BIG BROTHER</div>
-        <div class="brand-subtitle">Sales & Accounting System</div>
-      </a>
-    </div>
-
-    <div class="nav-title">Main Menu</div>
-    <nav class="nav">
-      <a href="https://angsokhey11-cloud.github.io/big-brother-dashboard/">🏠 Dashboard</a>
-
-      <div class="nav-group sales-nav-group open">
-        <button type="button" class="nav-parent active" id="salesMenuButton" aria-expanded="true" onclick="toggleGlobalSalesMenu()">
-          <span>🧾 Sales</span>
-          <span class="nav-chevron">▾</span>
-        </button>
-        <div class="nav-submenu" id="salesSubmenu">
-          <a href="https://angsokhey11-cloud.github.io/big-brother-invoice-generator/">➕ New Invoice</a>
-          <a href="https://angsokhey11-cloud.github.io/invoice-history/" class="active">📋 Invoice History</a>
-        </div>
-      </div>
-
-      <a href="https://angsokhey11-cloud.github.io/big-brother-dashboard/#stock">📦 Stock</a>
-      <a href="https://angsokhey11-cloud.github.io/big-brother-dashboard/#ar">💰 A/R</a>
-      <a href="https://angsokhey11-cloud.github.io/big-brother-dashboard/#reports">📊 Reports</a>
-      <a href="https://angsokhey11-cloud.github.io/big-brother-dashboard/#master">🗂️ Master Data</a>
-    </nav>
-  </aside>
-
-  <main class="main">
+<main class="main">
 
     <div class="topbar">
       <div>
