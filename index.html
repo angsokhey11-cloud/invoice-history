@@ -761,6 +761,7 @@
   let historyMasterProducts = null;
   let historyMasterCustomers = null;
   let historyMasterLocations = null;
+  let historyLocationResolver = null;
 
 
   function $(id) {
@@ -854,6 +855,9 @@
 
     try {
 
+      // Load the invoice list WITHOUT server-side Location filtering first.
+      // Older invoices may not have Location Code stored in Sales Database yet,
+      // so we enrich their location from Master Database before filtering.
       const data =
         await fetchApi({
           action: "invoiceList",
@@ -862,9 +866,6 @@
 
           customer:
             $("customer").value.trim(),
-
-          locationCode:
-            $("locationCode").value,
 
           dateFrom:
             $("dateFrom").value,
@@ -876,10 +877,22 @@
             $("invoiceType").value
         });
 
-      const invoices =
+      let invoices =
         Array.isArray(data.invoices)
           ? data.invoices
           : [];
+
+      // Fill blank Location Code values from Master Database.
+      invoices = await enrichHistoryInvoiceLocations(invoices);
+
+      // Exact Location filter is applied AFTER enrichment so old invoices
+      // can still be found by location.
+      const selectedLocation = String($("locationCode").value || "").trim().toLowerCase();
+      if (selectedLocation) {
+        invoices = invoices.filter(invoice =>
+          String(invoice.locationCode || "").trim().toLowerCase() === selectedLocation
+        );
+      }
 
       renderInvoices(invoices);
 
@@ -1054,6 +1067,102 @@
     return rows;
   }
 
+
+  async function getHistoryLocationResolver() {
+    if (historyLocationResolver) return historyLocationResolver;
+
+    const [customers, locations] = await Promise.all([
+      getHistoryMasterCustomers(),
+      getHistoryMasterLocations()
+    ]);
+
+    const locationByCode = {};
+    locations.forEach(row => {
+      const code = String(row?.locationCode || row?.code || "").trim();
+      if (!code) return;
+      locationByCode[code.toLowerCase()] = {
+        code,
+        name: String(row?.locationName || row?.name || "").trim(),
+        salesperson: String(row?.salespersonName || row?.salesperson || "").trim()
+      };
+    });
+
+    const byCustomer = {};
+    customers.forEach(row => {
+      const name = String(row?.name || row?.customer || "").trim();
+      const code = String(
+        row?.locationCode ||
+        row?.location ||
+        row?.location_code ||
+        row?.locationId ||
+        ""
+      ).trim();
+      if (!name || !code) return;
+
+      const key = name.toLowerCase();
+      if (!byCustomer[key]) byCustomer[key] = [];
+      if (!byCustomer[key].some(item => item.code.toLowerCase() === code.toLowerCase())) {
+        byCustomer[key].push({
+          code,
+          salesperson: String(locationByCode[code.toLowerCase()]?.salesperson || "").trim()
+        });
+      }
+    });
+
+    historyLocationResolver = { byCustomer, locationByCode };
+    return historyLocationResolver;
+  }
+
+  async function resolveHistoryInvoiceLocation(invoice) {
+    if (!invoice) return "";
+
+    const stored = String(invoice.locationCode || "").trim();
+    if (stored) return stored;
+
+    try {
+      const resolver = await getHistoryLocationResolver();
+      const customerKey = String(invoice.customer || "").trim().toLowerCase();
+      const salespersonKey = String(invoice.salesperson || "").trim().toLowerCase();
+      const matches = resolver.byCustomer[customerKey] || [];
+
+      // Best match: Customer + the default salesperson of that location.
+      if (salespersonKey) {
+        const exact = matches.find(item =>
+          String(item.salesperson || "").trim().toLowerCase() === salespersonKey
+        );
+        if (exact) return exact.code;
+      }
+
+      // If the customer belongs to only one location, it is unambiguous.
+      if (matches.length === 1) return matches[0].code;
+    } catch (error) {
+      console.warn("Could not resolve invoice location from Master Database:", error);
+    }
+
+    return "";
+  }
+
+  async function enrichHistoryInvoiceLocations(invoices) {
+    const rows = Array.isArray(invoices) ? invoices : [];
+    if (!rows.length) return rows;
+
+    // Load the Master mapping once, then resolve all rows locally.
+    try {
+      await getHistoryLocationResolver();
+    } catch (error) {
+      console.warn("Location resolver unavailable:", error);
+      return rows;
+    }
+
+    await Promise.all(rows.map(async invoice => {
+      if (!String(invoice.locationCode || "").trim()) {
+        invoice.locationCode = await resolveHistoryInvoiceLocation(invoice);
+      }
+    }));
+
+    return rows;
+  }
+
   async function enrichHistoryInvoiceFromMaster(invoice) {
     if (!invoice) return invoice;
 
@@ -1096,6 +1205,11 @@
     );
 
     await Promise.allSettled(tasks);
+
+    if (!String(invoice.locationCode || "").trim()) {
+      invoice.locationCode = await resolveHistoryInvoiceLocation(invoice);
+    }
+
     return invoice;
   }
 
