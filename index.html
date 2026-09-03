@@ -540,7 +540,7 @@
     .action-menu-btn{width:32px;height:32px;border:0;border-radius:8px;background:#eef3f8;color:#17457a;font-size:20px;font-weight:800;line-height:1;cursor:pointer}
     .action-menu-btn:hover{background:#dfe9f5}
     .row-action-menu{display:none;position:absolute;right:10px;top:39px;z-index:80;width:150px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(16,42,67,.18);padding:6px;text-align:left}
-    .row-action-menu.show{display:block}
+    .row-action-menu.show{display:block;visibility:visible;opacity:1}
     .row-action-menu button{width:100%;border:0;background:transparent;padding:10px 11px;border-radius:7px;text-align:left;font-size:13px;font-weight:700;cursor:pointer;color:var(--text)}
     .row-action-menu button:hover{background:#f2f6fb}.row-action-menu .danger{color:#c62828}.row-action-menu .print{color:#18864b}
 
@@ -1143,9 +1143,58 @@
   async function shareHistoryInvoiceToTelegram(event){if(event){event.preventDefault();event.stopPropagation();}const button=event?.currentTarget,oldText=button?.innerHTML||"";try{if(button){button.disabled=true;button.innerHTML="⏳ Preparing...";}const blob=await createHistoryInvoiceImage();const invoiceNo=currentHistoryInvoice?.invoiceNo||"Invoice";const customer=currentHistoryInvoice?.customer||"Customer";const safeInvoice=historySafeFileName(invoiceNo,"Invoice");const file=new File([blob],`BIG-BROTHER-${safeInvoice}.png`,{type:"image/png"});const text=`BIG BROTHER Invoice ${invoiceNo}\nCustomer: ${customer}`;const mobileDevice=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);const touchDevice="ontouchstart" in window||navigator.maxTouchPoints>0;const isMobile=mobileDevice||touchDevice;if(isMobile){if(!navigator.share){alert("Your browser does not support sharing invoice pictures. Please use Chrome or Safari with Telegram installed.");return;}try{if(navigator.canShare&&!navigator.canShare({files:[file]}))throw new Error("This browser cannot share image files.");await navigator.share({files:[file],title:"BIG BROTHER Invoice"});return;}catch(e){if(e?.name==="AbortError")return;console.warn("Image share failed:",e);}try{await navigator.share({title:"BIG BROTHER Invoice",text,files:[file]});return;}catch(e){if(e?.name==="AbortError")return;console.warn("Combined share failed:",e);}try{await navigator.share({title:"BIG BROTHER Invoice",text});return;}catch(e){if(e?.name==="AbortError")return;throw e;}}if(navigator.clipboard&&window.ClipboardItem){try{await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);window.open("https://web.telegram.org/","_blank","noopener");alert("Invoice picture copied. Open the customer chat in Telegram and press Ctrl+V.");return;}catch(e){console.warn("Clipboard image copy failed:",e);}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`BIG-BROTHER-${safeInvoice}.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);window.open("https://web.telegram.org/","_blank","noopener");alert("Invoice picture saved. Attach the saved picture in Telegram.");}catch(error){if(error?.name==="AbortError")return;console.error("Telegram share failed:",error);alert("Could not share the invoice picture. Please try again.");}finally{if(button){button.disabled=false;button.innerHTML=oldText;}}}
 
 
-  function closeRowActions(){document.querySelectorAll(".row-action-menu.show").forEach(x=>x.classList.remove("show"));}
-  function toggleRowActions(event,button){event.stopPropagation();const menu=button.nextElementSibling;const wasOpen=menu.classList.contains("show");closeRowActions();if(!wasOpen)menu.classList.add("show");}
+  function closeRowActions(){
+    document.querySelectorAll(".row-action-menu.show").forEach(menu=>{
+      menu.classList.remove("show");
+      menu.style.position="";
+      menu.style.left="";
+      menu.style.right="";
+      menu.style.top="";
+      menu.style.zIndex="";
+      menu.style.maxHeight="";
+      menu.style.overflowY="";
+    });
+  }
+
+  function toggleRowActions(event,button){
+    event.stopPropagation();
+    const menu=button.nextElementSibling;
+    const wasOpen=menu.classList.contains("show");
+    closeRowActions();
+    if(wasOpen)return;
+
+    menu.classList.add("show");
+
+    // Keep the dropdown above all following table rows and outside
+    // the table's overflow/stacking context.
+    menu.style.position="fixed";
+    menu.style.right="auto";
+    menu.style.zIndex="99999";
+    menu.style.maxHeight="calc(100vh - 16px)";
+    menu.style.overflowY="auto";
+
+    const rect=button.getBoundingClientRect();
+    const menuWidth=menu.offsetWidth || 150;
+    const menuHeight=menu.offsetHeight || 190;
+    const gap=6;
+    const edge=8;
+
+    let left=rect.right-menuWidth;
+    left=Math.max(edge,Math.min(left,window.innerWidth-menuWidth-edge));
+
+    let top=rect.bottom+gap;
+    if(top+menuHeight>window.innerHeight-edge){
+      top=rect.top-menuHeight-gap;
+    }
+    top=Math.max(edge,top);
+
+    menu.style.left=left+"px";
+    menu.style.top=top+"px";
+  }
+
   document.addEventListener("click",closeRowActions);
+  window.addEventListener("resize",closeRowActions);
+  window.addEventListener("scroll",closeRowActions,true);
 
   async function getHistoryInvoice(invoiceNo){
     const data=await fetchApi({action:"invoiceDetail",invoiceNo});
