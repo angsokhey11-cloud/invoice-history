@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BIG BROTHER — Invoice History</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    :root {
+      --navy: #17457a;
+      --navy-dark: #123861;
+      --blue: #2f6fed;
+      --bg: #eef3f8;
+      --card: #ffffff;
+      --text: #172b4d;
+      --muted: #667085;
+      --border: #d9e2ef;
+      --green: #18864b;
+      --red: #c62828;
+      --orange: #d97706;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 250px;
+      background: var(--navy-dark);
+      color: white;
+      padding: 24px 16px;
+      position: fixed;
+      inset: 0 auto 0 0;
+      overflow-y: auto;
+    }
+
+    .brand {
+      padding: 4px 12px 28px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      margin-bottom: 18px;
+    }
+
+    .brand-title {
+      font-size: 25px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    .brand-subtitle {
+      margin-top: 5px;
+      color: #b8c9df;
+      font-size: 12px;
+    }
+
+    .nav-title {
+      padding: 10px 12px 7px;
+      color: #91a9c6;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .nav a {
+      color: #e8f0fa;
+      text-decoration: none;
+      padding: 12px;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav a:hover,
+    .nav a.active {
+      background: rgba(255,255,255,.12);
+    }
+
+    .main {
+      margin-left: 250px;
+      width: calc(100% - 250px);
+      padding: 28px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: 28px;
+      color: var(--navy);
+    }
+
+    .page-subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .system-pill {
+      background: #e5effc;
+      color: var(--navy);
+      border-radius: 999px;
+      padding: 9px 13px;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .filters {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 3px 10px rgba(16,42,67,.05);
+      margin-bottom: 18px;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1.5fr 1fr 1fr 1fr auto auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 11px;
+      background: white;
+      color: var(--text);
+      outline: none;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(47,111,237,.10);
+    }
+
+    .btn {
+      height: 40px;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 15px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--navy);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #e8eef6;
+      color: var(--navy);
+    }
+
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 0 2px 10px;
+    }
+
+    .summary-count {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .loading {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .table-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 3px 10px rgba(16,42,67,.05);
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1000px;
+    }
+
+    th {
+      background: #f5f8fc;
+      color: #53657d;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #edf1f6;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    tbody tr:hover {
+      background: #f8fbff;
+    }
+
+    .invoice-link {
+      color: var(--blue);
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .invoice-link:hover {
+      text-decoration: underline;
+    }
+
+    .money {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .badge-paid {
+      color: var(--green);
+      background: #e8f7ef;
+    }
+
+    .badge-credit {
+      color: var(--orange);
+      background: #fff4df;
+    }
+
+    .empty {
+      padding: 45px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .error {
+      display: none;
+      background: #fff0f0;
+      color: var(--red);
+      border: 1px solid #f2c6c6;
+      border-radius: 10px;
+      padding: 11px 13px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Invoice detail modal */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(10, 25, 45, .48);
+      padding: 30px;
+      overflow-y: auto;
+    }
+
+    .modal.show {
+      display: block;
+    }
+
+    .modal-card {
+      width: min(1100px, 100%);
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.22);
+      overflow: hidden;
+    }
+
+    .modal-head {
+      padding: 18px 20px;
+      background: #f5f8fc;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      color: var(--navy);
+      font-size: 20px;
+    }
+
+    .close {
+      border: 0;
+      background: #e5ebf3;
+      color: var(--navy);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .detail-body {
+      padding: 20px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .detail-box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      background: #fbfcfe;
+    }
+
+    .detail-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .detail-value {
+      font-size: 13px;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .items-title {
+      margin: 0 0 9px;
+      color: var(--navy);
+      font-size: 15px;
+    }
+
+    .items-table {
+      min-width: 650px;
+    }
+
+    .totals {
+      margin-top: 18px;
+      margin-left: auto;
+      width: min(360px, 100%);
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 7px 0;
+      font-size: 13px;
+    }
+
+    .total-row.grand {
+      border-top: 2px solid var(--navy);
+      margin-top: 5px;
+      padding-top: 10px;
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    .total-row.outstanding {
+      color: var(--orange);
+      font-weight: 800;
+    }
+
+    @media (max-width: 1100px) {
+      .filter-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .detail-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .sidebar {
+        position: static;
+        width: 100%;
+        min-height: auto;
+        padding: 16px 12px;
+      }
+
+      .app {
+        display: block;
+      }
+
+      .main {
+        margin-left: 0;
+        width: 100%;
+        padding: 18px;
+      }
+
+      .nav {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .nav-title {
+        display: none;
+      }
+
+      .topbar {
+        align-items: flex-start;
+      }
+
+      .filter-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .modal {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-title">BIG BROTHER</div>
+      <div class="brand-subtitle">Sales & Accounting System</div>
+    </div>
+
+    <div class="nav-title">Main Menu</div>
+    <nav class="nav">
+      <a href="index.html">🏠 Dashboard</a>
+      <a href="index.html#sales" class="active">🧾 Sales</a>
+      <a href="index.html#stock">📦 Stock</a>
+      <a href="index.html#ar">💰 A/R</a>
+      <a href="index.html#reports">📊 Reports</a>
+      <a href="index.html#master">🗂️ Master Data</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+
+    <div class="topbar">
+      <div>
+        <h1 class="page-title">Invoice History</h1>
+        <p class="page-subtitle">Search and review saved sales invoices.</p>
+      </div>
+      <div class="system-pill">SALES DATABASE</div>
+    </div>
+
+    <div id="errorBox" class="error"></div>
+
+    <section class="filters">
+
+      <div class="filter-grid">
+
+        <div class="field">
+          <label>Invoice No</label>
+          <input id="invoiceNo" type="text" placeholder="e.g. INV-0094">
+        </div>
+
+        <div class="field">
+          <label>Customer</label>
+          <input id="customer" type="text" placeholder="Customer name">
+        </div>
+
+        <div class="field">
+          <label>Date From</label>
+          <input id="dateFrom" type="date">
+        </div>
+
+        <div class="field">
+          <label>Date To</label>
+          <input id="dateTo" type="date">
+        </div>
+
+        <div class="field">
+          <label>Type</label>
+          <select id="invoiceType">
+            <option value="">All</option>
+            <option value="Paid">Paid</option>
+            <option value="Credit">Credit</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" type="button" onclick="loadInvoices()">
+          Search
+        </button>
+
+        <button class="btn btn-secondary" type="button" onclick="clearFilters()">
+          Clear
+        </button>
+
+      </div>
+
+    </section>
+
+    <div class="summary">
+      <div id="summaryCount" class="summary-count">0 invoices</div>
+      <div id="loading" class="loading"></div>
+    </div>
+
+    <section class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice No</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Salesperson</th>
+              <th>Payment</th>
+              <th>Currency</th>
+              <th>Grand Total</th>
+              <th>Paid</th>
+              <th>Outstanding</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody id="invoiceBody">
+            <tr>
+              <td colspan="10" class="empty">
+                Loading invoice history...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+
+<!-- Invoice Detail Modal -->
+<div id="detailModal" class="modal" onclick="modalBackdrop(event)">
+
+  <div class="modal-card">
+
+    <div class="modal-head">
+      <h2 id="detailTitle">Invoice Detail</h2>
+      <button class="close" type="button" onclick="closeDetail()">×</button>
+    </div>
+
+    <div class="detail-body">
+
+      <div id="detailLoading" class="loading">Loading invoice...</div>
+
+      <div id="detailContent" style="display:none;">
+
+        <div id="detailGrid" class="detail-grid"></div>
+
+        <h3 class="items-title">Original Invoice Items</h3>
+
+        <div class="table-wrap">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Product Code</th>
+                <th>Product Name</th>
+                <th class="money">Qty</th>
+                <th class="money">Price</th>
+                <th class="money">Total</th>
+              </tr>
+            </thead>
+            <tbody id="detailItems"></tbody>
+          </table>
+        </div>
+
+        <div class="totals">
+          <div class="total-row">
+            <span>Subtotal</span>
+            <strong id="detailSubtotal">0</strong>
+          </div>
+
+          <div class="total-row">
+            <span>Discount</span>
+            <strong id="detailDiscount">0</strong>
+          </div>
+
+          <div class="total-row grand">
+            <span>Grand Total</span>
+            <strong id="detailGrandTotal">0</strong>
+          </div>
+
+          <div class="total-row">
+            <span>Amount Paid</span>
+            <strong id="detailPaid">0</strong>
+          </div>
+
+          <div class="total-row outstanding">
+            <span>Outstanding</span>
+            <strong id="detailOutstanding">0</strong>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<script>
+  /*
+   * SALES DATABASE WEB APP
+   *
+   * IMPORTANT:
+   * This is the existing Sales Database Web App URL.
+   * We only READ invoice history from it here.
+   */
+  const SALES_DATABASE_URL =
+    "https://script.google.com/macros/s/AKfycbyM5mUlz5SeMZ_oPJCo2FgLkPEcodAQ7wPl5wxAdrvfqLvsZLaHxiOtS02L1Q3ZRA3D/exec";
+
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+
+  function numberValue(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+
+  function money(value, currency) {
+    const n = numberValue(value);
+
+    return n.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }) + (currency ? " " + currency : "");
+  }
+
+
+  function showError(message) {
+    const box = $("errorBox");
+
+    box.textContent = message;
+    box.style.display = "block";
+  }
+
+
+  function hideError() {
+    $("errorBox").style.display = "none";
+  }
+
+
+  async function fetchApi(params) {
+
+    const url =
+      SALES_DATABASE_URL +
+      "?" +
+      new URLSearchParams(params).toString();
+
+    const response =
+      await fetch(url, {
+        method: "GET",
+        cache: "no-store"
+      });
+
+    if (!response.ok) {
+      throw new Error(
+        "Sales Database returned HTTP " +
+        response.status
+      );
+    }
+
+    const data =
+      await response.json();
+
+    if (!data || data.success === false) {
+      throw new Error(
+        data && data.error
+          ? data.error
+          : "Sales Database returned an error."
+      );
+    }
+
+    return data;
+  }
+
+
+  async function loadInvoices() {
+
+    hideError();
+
+    $("loading").textContent =
+      "Loading...";
+
+    $("invoiceBody").innerHTML =
+      '<tr><td colspan="10" class="empty">Loading invoice history...</td></tr>';
+
+    try {
+
+      const data =
+        await fetchApi({
+          action: "invoiceList",
+          invoiceNo:
+            $("invoiceNo").value.trim(),
+
+          customer:
+            $("customer").value.trim(),
+
+          dateFrom:
+            $("dateFrom").value,
+
+          dateTo:
+            $("dateTo").value,
+
+          invoiceType:
+            $("invoiceType").value
+        });
+
+      const invoices =
+        Array.isArray(data.invoices)
+          ? data.invoices
+          : [];
+
+      renderInvoices(invoices);
+
+    } catch (error) {
+
+      console.error(error);
+
+      showError(
+        error.message ||
+        "Unable to load invoice history."
+      );
+
+      $("invoiceBody").innerHTML =
+        '<tr><td colspan="10" class="empty">Unable to load invoice history.</td></tr>';
+
+      $("summaryCount").textContent =
+        "0 invoices";
+
+    } finally {
+
+      $("loading").textContent =
+        "";
+    }
+  }
+
+
+  function renderInvoices(invoices) {
+
+    $("summaryCount").textContent =
+      invoices.length +
+      (invoices.length === 1
+        ? " invoice"
+        : " invoices");
+
+    if (!invoices.length) {
+
+      $("invoiceBody").innerHTML =
+        '<tr><td colspan="10" class="empty">No invoices found.</td></tr>';
+
+      return;
+    }
+
+    $("invoiceBody").innerHTML =
+      invoices.map(invoice => {
+
+        const type =
+          String(invoice.invoiceType || "")
+            .toLowerCase();
+
+        const badgeClass =
+          type === "credit"
+            ? "badge-credit"
+            : "badge-paid";
+
+        const badgeText =
+          invoice.invoiceType ||
+          invoice.status ||
+          "";
+
+        return `
+          <tr>
+
+            <td>
+              <a
+                class="invoice-link"
+                href="#"
+                onclick="openDetail('${escapeHtml(invoice.invoiceNo)}'); return false;"
+              >
+                ${escapeHtml(invoice.invoiceNo)}
+              </a>
+            </td>
+
+            <td>
+              ${escapeHtml(invoice.invoiceDate || "")}
+            </td>
+
+            <td>
+              ${escapeHtml(invoice.customer || "")}
+            </td>
+
+            <td>
+              ${escapeHtml(invoice.salesperson || "")}
+            </td>
+
+            <td>
+              ${escapeHtml(invoice.paymentMethod || "")}
+            </td>
+
+            <td>
+              ${escapeHtml(invoice.currency || "")}
+            </td>
+
+            <td class="money">
+              ${money(invoice.grandTotal, "")}
+            </td>
+
+            <td class="money">
+              ${money(invoice.amountPaid, "")}
+            </td>
+
+            <td class="money">
+              ${money(invoice.outstanding, "")}
+            </td>
+
+            <td>
+              <span class="badge ${badgeClass}">
+                ${escapeHtml(badgeText)}
+              </span>
+            </td>
+
+          </tr>
+        `;
+      }).join("");
+  }
+
+
+  function clearFilters() {
+
+    $("invoiceNo").value = "";
+    $("customer").value = "";
+    $("dateFrom").value = "";
+    $("dateTo").value = "";
+    $("invoiceType").value = "";
+
+    loadInvoices();
+  }
+
+
+  async function openDetail(invoiceNo) {
+
+    hideError();
+
+    $("detailModal").classList.add("show");
+
+    $("detailTitle").textContent =
+      "Invoice " + invoiceNo;
+
+    $("detailLoading").style.display =
+      "block";
+
+    $("detailContent").style.display =
+      "none";
+
+    try {
+
+      const data =
+        await fetchApi({
+          action: "invoiceDetail",
+          invoiceNo: invoiceNo
+        });
+
+      if (!data.invoice) {
+        throw new Error(
+          "Invoice detail was not returned."
+        );
+      }
+
+      renderDetail(data.invoice);
+
+    } catch (error) {
+
+      console.error(error);
+
+      $("detailLoading").textContent =
+        error.message ||
+        "Unable to load invoice.";
+
+    }
+  }
+
+
+  function renderDetail(invoice) {
+
+    $("detailLoading").style.display =
+      "none";
+
+    $("detailContent").style.display =
+      "block";
+
+    const fields = [
+
+      ["Invoice No", invoice.invoiceNo],
+      ["Invoice Date", invoice.invoiceDate],
+      ["Customer", invoice.customer],
+      ["Salesperson", invoice.salesperson],
+
+      ["Payment Method", invoice.paymentMethod],
+      ["Currency", invoice.currency],
+      ["Exchange Rate", invoice.exchangeRate],
+      ["Status", invoice.status],
+
+      ["Due Date", invoice.dueDate],
+      ["Bank Payment", invoice.bankPayment],
+      ["Bank Reference", invoice.bankReference],
+      ["Batch Number", invoice.batchNumber],
+
+      ["Invoice ID", invoice.invoiceId],
+      ["Note", invoice.note]
+    ];
+
+    $("detailGrid").innerHTML =
+      fields.map(item => `
+        <div class="detail-box">
+          <div class="detail-label">
+            ${escapeHtml(item[0])}
+          </div>
+
+          <div class="detail-value">
+            ${escapeHtml(item[1] ?? "")}
+          </div>
+        </div>
+      `).join("");
+
+
+    const items =
+      Array.isArray(invoice.items)
+        ? invoice.items
+        : [];
+
+    if (!items.length) {
+
+      $("detailItems").innerHTML =
+        '<tr><td colspan="5" class="empty">No invoice items found.</td></tr>';
+
+    } else {
+
+      $("detailItems").innerHTML =
+        items.map(item => `
+          <tr>
+
+            <td>
+              ${escapeHtml(item.productCode)}
+            </td>
+
+            <td>
+              ${escapeHtml(item.productName)}
+            </td>
+
+            <td class="money">
+              ${numberValue(item.qty)}
+            </td>
+
+            <td class="money">
+              ${money(item.price, invoice.currency)}
+            </td>
+
+            <td class="money">
+              ${money(item.total, invoice.currency)}
+            </td>
+
+          </tr>
+        `).join("");
+    }
+
+
+    $("detailSubtotal").textContent =
+      money(invoice.subtotal, invoice.currency);
+
+    $("detailDiscount").textContent =
+      money(invoice.discount, invoice.currency);
+
+    $("detailGrandTotal").textContent =
+      money(invoice.grandTotal, invoice.currency);
+
+    $("detailPaid").textContent =
+      money(invoice.amountPaid, invoice.currency);
+
+    $("detailOutstanding").textContent =
+      money(invoice.outstanding, invoice.currency);
+  }
+
+
+  function closeDetail() {
+
+    $("detailModal").classList.remove("show");
+
+    $("detailLoading").textContent =
+      "Loading invoice...";
+  }
+
+
+  function modalBackdrop(event) {
+
+    if (
+      event.target === $("detailModal")
+    ) {
+      closeDetail();
+    }
+  }
+
+
+  document.addEventListener(
+    "keydown",
+    event => {
+
+      if (
+        event.key === "Escape" &&
+        $("detailModal").classList.contains("show")
+      ) {
+        closeDetail();
+      }
+    }
+  );
+
+
+  /*
+   * Load newest invoices when page opens.
+   */
+  loadInvoices();
+</script>
+
+</body>
+</html>
