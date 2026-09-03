@@ -593,7 +593,16 @@
       .main { margin-left:0 !important; width:100% !important; padding:14px !important; }
     }
 
-  </style>
+  
+    /* WORKSPACE-ONLY MODE: never render a second BIG BROTHER sidebar inside the shell */
+    .sidebar, aside.sidebar { display: none !important; }
+    .app { display: block !important; min-height: 100vh; }
+    .main { margin-left: 0 !important; width: 100% !important; max-width: none !important; padding: 28px !important; }
+    @media (max-width: 720px) {
+      .main { margin-left: 0 !important; width: 100% !important; padding: 16px !important; }
+    }
+
+</style>
 </head>
 
 <body>
@@ -608,7 +617,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-<div class="app">
 <main class="main">
 
     <div class="topbar">
@@ -710,8 +718,6 @@
     </section>
 
   </main>
-</div>
-
 
 <!-- Invoice Detail Modal -->
 <div id="detailModal" class="modal" onclick="modalBackdrop(event)">
