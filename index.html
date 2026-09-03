@@ -142,7 +142,7 @@
 
     .filter-grid {
       display: grid;
-      grid-template-columns: 1.2fr 1.5fr 1fr 1fr 1fr auto auto;
+      grid-template-columns: 1.05fr 1.25fr .9fr 1fr 1fr 1fr auto auto;
       gap: 10px;
       align-items: end;
     }
@@ -536,13 +536,16 @@
 
 
     /* Invoice row action menu */
-    .action-cell{position:relative;text-align:center;overflow:visible!important}
+    .action-cell{text-align:center}
     .action-menu-btn{width:32px;height:32px;border:0;border-radius:8px;background:#eef3f8;color:#17457a;font-size:20px;font-weight:800;line-height:1;cursor:pointer}
     .action-menu-btn:hover{background:#dfe9f5}
-    .row-action-menu{display:none;position:absolute;right:10px;top:39px;z-index:80;width:150px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(16,42,67,.18);padding:6px;text-align:left}
-    .row-action-menu.show{display:block;visibility:visible;opacity:1}
-    .row-action-menu button{width:100%;border:0;background:transparent;padding:10px 11px;border-radius:7px;text-align:left;font-size:13px;font-weight:700;cursor:pointer;color:var(--text)}
-    .row-action-menu button:hover{background:#f2f6fb}.row-action-menu .danger{color:#c62828}.row-action-menu .print{color:#18864b}
+    .floating-action-menu{display:none;position:fixed;z-index:999999;width:170px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 34px rgba(16,42,67,.22);padding:7px;flex-direction:column;gap:3px;overflow:hidden}
+    .floating-action-menu.show{display:flex}
+    .floating-action-menu button{display:flex;align-items:center;justify-content:flex-start;gap:9px;width:100%;min-width:0;border:0;background:transparent;padding:10px 11px;border-radius:8px;text-align:left;font-size:13px;font-weight:700;cursor:pointer;color:var(--text);white-space:nowrap}
+    .floating-action-menu button:hover{background:#f2f6fb}
+    .floating-action-menu .danger{color:#c62828}
+    .floating-action-menu .print{color:#18864b}
+    .floating-action-menu .edit{color:#2f6fed}
 
     /* Edit invoice modal */
     .edit-modal{z-index:1200}.edit-card{width:min(980px,100%)}
@@ -556,7 +559,7 @@
     .edit-total-box{margin:14px 0 0 auto;width:min(360px,100%);background:#f7f9fc;border:1px solid var(--border);border-radius:10px;padding:10px 12px}
     .edit-total-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}.edit-total-row.grand{font-size:15px;font-weight:800;border-top:2px solid var(--navy);margin-top:4px;padding-top:8px}
     .edit-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}.edit-save{background:#17457a;color:#fff}.edit-cancel{background:#e8eef6;color:#17457a}
-    @media(max-width:720px){.edit-grid{grid-template-columns:1fr}.edit-span-2,.edit-span-3{grid-column:span 1}.edit-body{padding:14px}.edit-actions{flex-direction:column-reverse}.edit-actions .btn{width:100%}.row-action-menu{right:4px}}
+    @media(max-width:720px){.edit-grid{grid-template-columns:1fr}.edit-span-2,.edit-span-3{grid-column:span 1}.edit-body{padding:14px}.edit-actions{flex-direction:column-reverse}.edit-actions .btn{width:100%}}
 
   </style>
 </head>
@@ -610,6 +613,13 @@
         </div>
 
         <div class="field">
+          <label>Location</label>
+          <select id="locationCode">
+            <option value="">All Locations</option>
+          </select>
+        </div>
+
+        <div class="field">
           <label>Date From</label>
           <input id="dateFrom" type="date">
         </div>
@@ -653,6 +663,7 @@
               <th>Invoice No</th>
               <th>Date</th>
               <th>Customer</th>
+              <th>Location</th>
               <th>Salesperson</th>
               <th>Payment</th>
               <th>Currency</th>
@@ -666,7 +677,7 @@
 
           <tbody id="invoiceBody">
             <tr>
-              <td colspan="11" class="empty">
+              <td colspan="12" class="empty">
                 Loading invoice history...
               </td>
             </tr>
@@ -712,6 +723,7 @@
         <div class="edit-field"><label>Invoice No</label><input id="editInvoiceNo" readonly></div>
         <div class="edit-field"><label>Invoice Date</label><input id="editInvoiceDate" type="date"></div>
         <div class="edit-field"><label>Customer</label><input id="editCustomer"></div>
+        <div class="edit-field"><label>Location Code</label><select id="editLocationCode"><option value="">Select Location</option></select></div>
         <div class="edit-field"><label>Salesperson</label><input id="editSalesperson"></div>
         <div class="edit-field"><label>Payment Method</label><select id="editPaymentMethod" onchange="recalcEditInvoice()"><option>Cash</option><option>Bank</option><option>Credit</option><option>Partially Paid in Cash</option><option>Partially Paid in Bank</option></select></div>
         <div class="edit-field"><label>Currency</label><select id="editCurrency" onchange="recalcEditInvoice()"><option>USD</option><option>KHR</option></select></div>
@@ -748,6 +760,7 @@
   let currentHistoryInvoice = null;
   let historyMasterProducts = null;
   let historyMasterCustomers = null;
+  let historyMasterLocations = null;
 
 
   function $(id) {
@@ -837,7 +850,7 @@
       "Loading...";
 
     $("invoiceBody").innerHTML =
-      '<tr><td colspan="11" class="empty">Loading invoice history...</td></tr>';
+      '<tr><td colspan="12" class="empty">Loading invoice history...</td></tr>';
 
     try {
 
@@ -849,6 +862,9 @@
 
           customer:
             $("customer").value.trim(),
+
+          locationCode:
+            $("locationCode").value,
 
           dateFrom:
             $("dateFrom").value,
@@ -877,7 +893,7 @@
       );
 
       $("invoiceBody").innerHTML =
-        '<tr><td colspan="11" class="empty">Unable to load invoice history.</td></tr>';
+        '<tr><td colspan="12" class="empty">Unable to load invoice history.</td></tr>';
 
       $("summaryCount").textContent =
         "0 invoices";
@@ -893,7 +909,7 @@
   function renderInvoices(invoices) {
     $("summaryCount").textContent = invoices.length + (invoices.length === 1 ? " invoice" : " invoices");
     if (!invoices.length) {
-      $("invoiceBody").innerHTML = '<tr><td colspan="11" class="empty">No invoices found.</td></tr>';
+      $("invoiceBody").innerHTML = '<tr><td colspan="12" class="empty">No invoices found.</td></tr>';
       return;
     }
     $("invoiceBody").innerHTML = invoices.map(invoice => {
@@ -906,6 +922,7 @@
         <td><a class="invoice-link" href="#" onclick='openDetail(${jsNo}); return false;'>${no}</a></td>
         <td>${escapeHtml(invoice.invoiceDate || "")}</td>
         <td>${escapeHtml(invoice.customer || "")}</td>
+        <td><strong>${escapeHtml(invoice.locationCode || "")}</strong></td>
         <td>${escapeHtml(invoice.salesperson || "")}</td>
         <td>${escapeHtml(invoice.paymentMethod || "")}</td>
         <td>${escapeHtml(invoice.currency || "")}</td>
@@ -914,13 +931,7 @@
         <td class="money">${money(invoice.outstanding, "")}</td>
         <td><span class="badge ${badgeClass}">${escapeHtml(badgeText)}</span></td>
         <td class="action-cell">
-          <button class="action-menu-btn" type="button" aria-label="Invoice actions" onclick="toggleRowActions(event,this)">⋮</button>
-          <div class="row-action-menu">
-            <button type="button" onclick='openDetail(${jsNo}); closeRowActions();'>👁 View</button>
-            <button type="button" onclick='openEditInvoice(${jsNo}); closeRowActions();'>✏️ Edit</button>
-            <button type="button" class="print" onclick='printInvoiceFromRow(${jsNo}); closeRowActions();'>🖨 Print</button>
-            <button type="button" class="danger" onclick='deleteInvoiceFromHistory(${jsNo}); closeRowActions();'>🗑 Delete</button>
-          </div>
+          <button class="action-menu-btn" type="button" aria-label="Invoice actions" onclick='toggleRowActions(event,this,${jsNo})'>⋮</button>
         </td>
       </tr>`;
     }).join("");
@@ -931,6 +942,7 @@
 
     $("invoiceNo").value = "";
     $("customer").value = "";
+    $("locationCode").value = "";
     $("dateFrom").value = "";
     $("dateTo").value = "";
     $("invoiceType").value = "";
@@ -981,6 +993,57 @@
     const rows = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
     historyMasterProducts = rows;
     return rows;
+  }
+
+  async function getHistoryMasterLocations() {
+    if (Array.isArray(historyMasterLocations)) return historyMasterLocations;
+    const data = await historyJsonp(MASTER_DATABASE_URL, {action:"getLocations"});
+    const rows = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+    historyMasterLocations = rows;
+    return rows;
+  }
+
+  async function populateHistoryLocationFilter() {
+    const select = $("locationCode");
+    if (!select) return;
+
+    const current = select.value;
+    try {
+      const rows = await getHistoryMasterLocations();
+      const locations = rows
+        .map(row => ({
+          code: String(row.locationCode || row.code || "").trim(),
+          name: String(row.locationName || row.name || "").trim()
+        }))
+        .filter(row => row.code)
+        .sort((a,b) => a.code.localeCompare(b.code, undefined, {numeric:true, sensitivity:"base"}));
+
+      select.innerHTML = '<option value="">All Locations</option>' +
+        locations.map(row => `<option value="${escapeHtml(row.code)}">${escapeHtml(row.code)}${row.name ? " — " + escapeHtml(row.name) : ""}</option>`).join("");
+
+      if (locations.some(row => row.code === current)) select.value = current;
+    } catch (error) {
+      console.warn("Could not load location filter:", error);
+      select.innerHTML = '<option value="">All Locations</option>';
+    }
+  }
+
+  async function populateEditLocationSelect(selectedCode) {
+    const select = $("editLocationCode");
+    if (!select) return;
+    try {
+      const rows = await getHistoryMasterLocations();
+      const locations = rows
+        .map(row => ({code:String(row.locationCode || row.code || "").trim(), name:String(row.locationName || row.name || "").trim()}))
+        .filter(row => row.code);
+      select.innerHTML = '<option value="">Select Location</option>' + locations.map(row =>
+        `<option value="${escapeHtml(row.code)}">${escapeHtml(row.code)}${row.name ? " — " + escapeHtml(row.name) : ""}</option>`
+      ).join("");
+      select.value = String(selectedCode || "").trim();
+    } catch (error) {
+      console.warn("Could not load edit locations:", error);
+      select.innerHTML = `<option value="${escapeHtml(selectedCode || "")}">${escapeHtml(selectedCode || "Select Location")}</option>`;
+    }
   }
 
   async function getHistoryMasterCustomers() {
@@ -1144,55 +1207,66 @@
 
 
   function closeRowActions(){
-    document.querySelectorAll(".row-action-menu.show").forEach(menu=>{
-      menu.classList.remove("show");
-      menu.style.position="";
-      menu.style.left="";
-      menu.style.right="";
-      menu.style.top="";
-      menu.style.zIndex="";
-      menu.style.maxHeight="";
-      menu.style.overflowY="";
+    const menu=document.getElementById("floatingActionMenu");
+    if(!menu)return;
+    menu.classList.remove("show");
+    menu.setAttribute("aria-hidden","true");
+    menu.innerHTML="";
+    menu.style.left="-9999px";
+    menu.style.top="-9999px";
+  }
+
+  function toggleRowActions(event,button,invoiceNo){
+    event.preventDefault();
+    event.stopPropagation();
+
+    const menu=document.getElementById("floatingActionMenu");
+    if(!menu||!button)return;
+
+    const sameOpen=menu.classList.contains("show") && menu.dataset.invoiceNo===String(invoiceNo||"");
+    closeRowActions();
+    if(sameOpen)return;
+
+    const jsNo=JSON.stringify(String(invoiceNo||""));
+    menu.dataset.invoiceNo=String(invoiceNo||"");
+    menu.innerHTML=`
+      <button type="button" role="menuitem" onclick='closeRowActions(); openDetail(${jsNo});'>👁 <span>View</span></button>
+      <button type="button" role="menuitem" class="edit" onclick='closeRowActions(); openEditInvoice(${jsNo});'>✏️ <span>Edit</span></button>
+      <button type="button" role="menuitem" class="print" onclick='closeRowActions(); printInvoiceFromRow(${jsNo});'>🖨 <span>Print</span></button>
+      <button type="button" role="menuitem" class="danger" onclick='closeRowActions(); deleteInvoiceFromHistory(${jsNo});'>🗑 <span>Delete</span></button>`;
+
+    menu.classList.add("show");
+    menu.setAttribute("aria-hidden","false");
+    menu.style.left="-9999px";
+    menu.style.top="-9999px";
+
+    requestAnimationFrame(()=>{
+      const rect=button.getBoundingClientRect();
+      const menuWidth=menu.offsetWidth||170;
+      const menuHeight=menu.offsetHeight||180;
+      const gap=6;
+      const edge=8;
+
+      let left=rect.right-menuWidth;
+      left=Math.max(edge,Math.min(left,window.innerWidth-menuWidth-edge));
+
+      let top=rect.bottom+gap;
+      if(top+menuHeight>window.innerHeight-edge){
+        top=rect.top-menuHeight-gap;
+      }
+      top=Math.max(edge,Math.min(top,window.innerHeight-menuHeight-edge));
+
+      menu.style.left=left+"px";
+      menu.style.top=top+"px";
     });
   }
 
-  function toggleRowActions(event,button){
-    event.stopPropagation();
-    const menu=button.nextElementSibling;
-    const wasOpen=menu.classList.contains("show");
+  document.addEventListener("click",event=>{
+    const menu=document.getElementById("floatingActionMenu");
+    if(!menu)return;
+    if(menu.contains(event.target)||event.target.closest?.(".action-menu-btn"))return;
     closeRowActions();
-    if(wasOpen)return;
-
-    menu.classList.add("show");
-
-    // Keep the dropdown above all following table rows and outside
-    // the table's overflow/stacking context.
-    menu.style.position="fixed";
-    menu.style.right="auto";
-    menu.style.zIndex="99999";
-    menu.style.maxHeight="calc(100vh - 16px)";
-    menu.style.overflowY="auto";
-
-    const rect=button.getBoundingClientRect();
-    const menuWidth=menu.offsetWidth || 150;
-    const menuHeight=menu.offsetHeight || 190;
-    const gap=6;
-    const edge=8;
-
-    let left=rect.right-menuWidth;
-    left=Math.max(edge,Math.min(left,window.innerWidth-menuWidth-edge));
-
-    let top=rect.bottom+gap;
-    if(top+menuHeight>window.innerHeight-edge){
-      top=rect.top-menuHeight-gap;
-    }
-    top=Math.max(edge,top);
-
-    menu.style.left=left+"px";
-    menu.style.top=top+"px";
-  }
-
-  document.addEventListener("click",closeRowActions);
+  });
   window.addEventListener("resize",closeRowActions);
   window.addEventListener("scroll",closeRowActions,true);
 
@@ -1211,7 +1285,7 @@
   let currentEditInvoice=null;
   async function openEditInvoice(invoiceNo){
     hideError();$("editModal").classList.add("show");$("editTitle").textContent="Edit Invoice "+invoiceNo;$("editLoading").style.display="block";$("editLoading").textContent="Loading invoice...";$("editContent").style.display="none";
-    try{const invoice=await getHistoryInvoice(invoiceNo);currentEditInvoice=invoice;populateEditInvoice(invoice);$("editLoading").style.display="none";$("editContent").style.display="block";}
+    try{const invoice=await getHistoryInvoice(invoiceNo);currentEditInvoice=invoice;populateEditInvoice(invoice);await populateEditLocationSelect(invoice.locationCode||"");$("editLoading").style.display="none";$("editContent").style.display="block";}
     catch(error){$("editLoading").textContent=error.message||"Unable to load invoice.";}
   }
 
@@ -1232,7 +1306,7 @@
 
   function buildEditPayload(){
     const totals=recalcEditInvoice();const items=(currentEditInvoice.items||[]).map((item,index)=>{const tr=document.querySelector(`#editItemsBody tr[data-edit-index="${index}"]`);const qty=Math.max(0,numberValue(tr?.querySelector(".edit-item-qty")?.value));const price=Math.max(0,numberValue(tr?.querySelector(".edit-item-price")?.value));return {productCode:item.productCode,qty,unitPrice:price,amount:qty*price};}).filter(x=>x.qty>0);
-    return {invoiceId:currentEditInvoice.invoiceId,invoiceNo:currentEditInvoice.invoiceNo,invoiceDate:$("editInvoiceDate").value,customer:$("editCustomer").value.trim(),salesperson:$("editSalesperson").value.trim(),paymentMethod:$("editPaymentMethod").value,currency:$("editCurrency").value,exchangeRate:numberValue($("editExchangeRate").value),subtotal:totals.subtotal,discount:totals.discount,grandTotal:totals.grandTotal,amountPaid:totals.amountPaid,outstanding:totals.outstanding,dueDate:$("editDueDate").value,bankPayment:$("editBankPayment").value.trim(),bankReference:$("editBankReference").value.trim(),batchNumber:$("editBatchNumber").value.trim(),note:$("editNote").value.trim(),items};
+    return {invoiceId:currentEditInvoice.invoiceId,invoiceNo:currentEditInvoice.invoiceNo,invoiceDate:$("editInvoiceDate").value,customer:$("editCustomer").value.trim(),locationCode:$("editLocationCode").value,salesperson:$("editSalesperson").value.trim(),paymentMethod:$("editPaymentMethod").value,currency:$("editCurrency").value,exchangeRate:numberValue($("editExchangeRate").value),subtotal:totals.subtotal,discount:totals.discount,grandTotal:totals.grandTotal,amountPaid:totals.amountPaid,outstanding:totals.outstanding,dueDate:$("editDueDate").value,bankPayment:$("editBankPayment").value.trim(),bankReference:$("editBankReference").value.trim(),batchNumber:$("editBatchNumber").value.trim(),note:$("editNote").value.trim(),items};
   }
 
   function postHistoryAction(action,fieldName,payload){
@@ -1240,7 +1314,7 @@
   }
 
   async function saveEditedInvoice(){
-    if(!currentEditInvoice)return;const payload=buildEditPayload();if(!payload.customer||!payload.salesperson||!payload.invoiceDate||!payload.items.length){alert("Invoice Date, Customer, Salesperson and at least one item are required.");return;}if(!confirm("Save changes to "+payload.invoiceNo+"?\n\nThis will update the Sales Database."))return;const btn=$("editSaveBtn");const old=btn.innerHTML;btn.disabled=true;btn.innerHTML="⏳ Saving...";try{await postHistoryAction("updateInvoice","invoiceData",payload);closeEditInvoice();await loadInvoices();alert("Invoice "+payload.invoiceNo+" update request was sent to Sales Database.");}catch(error){alert("Could not update invoice.\n\n"+(error.message||"Please try again."));}finally{btn.disabled=false;btn.innerHTML=old;}
+    if(!currentEditInvoice)return;const payload=buildEditPayload();if(!payload.customer||!payload.locationCode||!payload.salesperson||!payload.invoiceDate||!payload.items.length){alert("Invoice Date, Customer, Location, Salesperson and at least one item are required.");return;}if(!confirm("Save changes to "+payload.invoiceNo+"?\n\nThis will update the Sales Database."))return;const btn=$("editSaveBtn");const old=btn.innerHTML;btn.disabled=true;btn.innerHTML="⏳ Saving...";try{await postHistoryAction("updateInvoice","invoiceData",payload);closeEditInvoice();await loadInvoices();alert("Invoice "+payload.invoiceNo+" update request was sent to Sales Database.");}catch(error){alert("Could not update invoice.\n\n"+(error.message||"Please try again."));}finally{btn.disabled=false;btn.innerHTML=old;}
   }
 
   async function deleteInvoiceFromHistory(invoiceNo){
@@ -1292,8 +1366,11 @@
   /*
    * Load newest invoices when page opens.
    */
+  populateHistoryLocationFilter();
   loadInvoices();
 </script>
+
+<div id="floatingActionMenu" class="floating-action-menu" role="menu" aria-hidden="true"></div>
 
 </body>
 </html>
