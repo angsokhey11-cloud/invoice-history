@@ -763,6 +763,15 @@
   let historyMasterLocations = null;
   let historyLocationResolver = null;
 
+  // SMART AUTO-SYNC
+  // Only a tiny revision token is checked every 20 seconds.
+  // The full invoice list is downloaded only when that token changes.
+  const HISTORY_SYNC_INTERVAL_MS = 20000;
+  const HISTORY_DEVICE_CACHE_KEY = "bb_invoice_history_device_cache_v45";
+  let historyLastRevision = "";
+  let historySyncTimer = null;
+  let historySyncBusy = false;
+
 
   function $(id) {
     return document.getElementById(id);
@@ -843,44 +852,127 @@
   }
 
 
-  async function loadInvoices() {
+  function historyCurrentFilterKey() {
+    return JSON.stringify({
+      invoiceNo: String($("invoiceNo")?.value || "").trim(),
+      customer: String($("customer")?.value || "").trim(),
+      locationCode: String($("locationCode")?.value || "").trim(),
+      dateFrom: String($("dateFrom")?.value || ""),
+      dateTo: String($("dateTo")?.value || ""),
+      invoiceType: String($("invoiceType")?.value || "")
+    });
+  }
 
+  function readHistoryDeviceCache() {
+    try {
+      const raw = localStorage.getItem(HISTORY_DEVICE_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.invoices)) return null;
+      return parsed;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function saveHistoryDeviceCache(invoices, revision) {
+    try {
+      const payload = {
+        filterKey: historyCurrentFilterKey(),
+        revision: String(revision || historyLastRevision || ""),
+        savedAt: Date.now(),
+        invoices: Array.isArray(invoices) ? invoices : []
+      };
+      localStorage.setItem(HISTORY_DEVICE_CACHE_KEY, JSON.stringify(payload));
+      if (payload.revision) historyLastRevision = payload.revision;
+    } catch (error) {
+      console.warn("Invoice History device cache unavailable:", error);
+    }
+  }
+
+  function renderHistoryDeviceCache() {
+    const cached = readHistoryDeviceCache();
+    if (!cached || cached.filterKey !== historyCurrentFilterKey()) return false;
+    historyLastRevision = String(cached.revision || "");
+    renderInvoices(cached.invoices);
+    $("loading").textContent = "Cached • checking for updates...";
+    return true;
+  }
+
+  async function fetchHistoryRevision() {
+    const data = await fetchApi({ action: "invoiceHistoryRevision" });
+    return String(data?.revision || "0");
+  }
+
+  function flashHistorySyncStatus(text) {
+    const el = $("loading");
+    if (!el) return;
+    el.textContent = text;
+    clearTimeout(flashHistorySyncStatus.timer);
+    flashHistorySyncStatus.timer = setTimeout(() => {
+      if (el.textContent === text) el.textContent = "";
+    }, 1800);
+  }
+
+  async function historySmartSyncTick(forceCheck = false) {
+    if (historySyncBusy) return;
+    if (document.hidden && !forceCheck) return;
+
+    historySyncBusy = true;
+    try {
+      const revision = await fetchHistoryRevision();
+
+      // Same database revision: keep the already-rendered/device-cached data.
+      if (historyLastRevision && revision === historyLastRevision) {
+        flashHistorySyncStatus("Up to date • auto sync 20s");
+        return;
+      }
+
+      // Revision changed (new/edit/delete invoice), so refresh the current view.
+      historyLastRevision = revision;
+      await loadInvoices({ silent: true });
+      flashHistorySyncStatus("Updated automatically");
+
+    } catch (error) {
+      console.warn("Invoice History smart sync check failed:", error);
+      // Keep cached/current data on screen. The next 20-second cycle retries.
+    } finally {
+      historySyncBusy = false;
+    }
+  }
+
+  function startHistorySmartSync() {
+    if (historySyncTimer) clearInterval(historySyncTimer);
+    historySyncTimer = setInterval(() => historySmartSyncTick(false), HISTORY_SYNC_INTERVAL_MS);
+  }
+
+
+  async function loadInvoices(options = {}) {
+
+    const silent = options && options.silent === true;
     hideError();
 
-    $("loading").textContent =
-      "Loading...";
-
-    $("invoiceBody").innerHTML =
-      '<tr><td colspan="12" class="empty">Loading invoice history...</td></tr>';
+    if (!silent) {
+      $("loading").textContent = "Loading...";
+      $("invoiceBody").innerHTML =
+        '<tr><td colspan="12" class="empty">Loading invoice history...</td></tr>';
+    }
 
     try {
 
       // Load the invoice list WITHOUT server-side Location filtering first.
       // Older invoices may not have Location Code stored in Sales Database yet,
       // so we enrich their location from Master Database before filtering.
-      const data =
-        await fetchApi({
-          action: "invoiceList",
-          invoiceNo:
-            $("invoiceNo").value.trim(),
+      const data = await fetchApi({
+        action: "invoiceList",
+        invoiceNo: $("invoiceNo").value.trim(),
+        customer: $("customer").value.trim(),
+        dateFrom: $("dateFrom").value,
+        dateTo: $("dateTo").value,
+        invoiceType: $("invoiceType").value
+      });
 
-          customer:
-            $("customer").value.trim(),
-
-          dateFrom:
-            $("dateFrom").value,
-
-          dateTo:
-            $("dateTo").value,
-
-          invoiceType:
-            $("invoiceType").value
-        });
-
-      let invoices =
-        Array.isArray(data.invoices)
-          ? data.invoices
-          : [];
+      let invoices = Array.isArray(data.invoices) ? data.invoices : [];
 
       // Fill blank Location Code values from Master Database.
       invoices = await enrichHistoryInvoiceLocations(invoices);
@@ -894,27 +986,33 @@
         );
       }
 
+      const revision = String(data.revision || historyLastRevision || "");
+      if (revision) historyLastRevision = revision;
+
       renderInvoices(invoices);
+      saveHistoryDeviceCache(invoices, revision);
 
     } catch (error) {
 
       console.error(error);
 
-      showError(
-        error.message ||
-        "Unable to load invoice history."
-      );
+      // If the network is temporarily unavailable, keep/use the device cache.
+      const cached = readHistoryDeviceCache();
+      const canUseCache = cached && cached.filterKey === historyCurrentFilterKey();
 
-      $("invoiceBody").innerHTML =
-        '<tr><td colspan="12" class="empty">Unable to load invoice history.</td></tr>';
-
-      $("summaryCount").textContent =
-        "0 invoices";
+      if (canUseCache) {
+        renderInvoices(cached.invoices);
+        historyLastRevision = String(cached.revision || historyLastRevision || "");
+        showError("Connection unavailable. Showing the last synced invoice data stored on this device.");
+      } else {
+        showError(error.message || "Unable to load invoice history.");
+        $("invoiceBody").innerHTML =
+          '<tr><td colspan="12" class="empty">Unable to load invoice history.</td></tr>';
+        $("summaryCount").textContent = "0 invoices";
+      }
 
     } finally {
-
-      $("loading").textContent =
-        "";
+      if (!silent) $("loading").textContent = "";
     }
   }
 
@@ -1480,8 +1578,27 @@
   /*
    * Load newest invoices when page opens.
    */
-  populateHistoryLocationFilter();
-  loadInvoices();
+  (async function initializeInvoiceHistory() {
+    await populateHistoryLocationFilter();
+
+    // Show previously synced device data immediately when possible.
+    const showedCache = renderHistoryDeviceCache();
+
+    if (!showedCache) {
+      await loadInvoices();
+    } else {
+      // Cache is already visible; only check the tiny revision token now.
+      await historySmartSyncTick(true);
+    }
+
+    startHistorySmartSync();
+  })();
+
+  // When the user returns to this browser tab, check immediately instead of
+  // waiting for the next 20-second interval.
+  document.addEventListener("visibilitychange", function() {
+    if (!document.hidden) historySmartSyncTick(true);
+  });
 </script>
 
 <div id="floatingActionMenu" class="floating-action-menu" role="menu" aria-hidden="true"></div>
