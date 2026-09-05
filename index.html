@@ -849,6 +849,62 @@
   }
 
 
+  let historyPrimaryAdminCode = "";
+  let historyPrimaryAdminName = "";
+
+  async function requireHistoryPrimaryAdmin() {
+    if (historyPrimaryAdminCode) {
+      try {
+        const cachedCheck = await fetchApi({
+          action: "verifyInvoiceHistoryPrimaryAdmin",
+          adminCode: historyPrimaryAdminCode,
+          t: Date.now()
+        });
+        if (cachedCheck && cachedCheck.authorized) return true;
+      } catch (_) {}
+      historyPrimaryAdminCode = "";
+      historyPrimaryAdminName = "";
+    }
+
+    const code = prompt(
+      "ADMIN 1 ACCESS REQUIRED\n\nOnly the first Admin in Master Database can Edit or Delete invoices.\n\nEnter Admin 1 Code:"
+    );
+    if (code === null) return false;
+    const cleanCode = String(code || "").trim();
+    if (!cleanCode) {
+      alert("Admin 1 Code is required.");
+      return false;
+    }
+
+    try {
+      const result = await fetchApi({
+        action: "verifyInvoiceHistoryPrimaryAdmin",
+        adminCode: cleanCode,
+        t: Date.now()
+      });
+      if (!result || !result.authorized) {
+        alert(result?.error || "Only Admin 1 can Edit or Delete invoices.");
+        return false;
+      }
+      historyPrimaryAdminCode = cleanCode;
+      historyPrimaryAdminName = result.adminName || "Admin 1";
+      return true;
+    } catch (error) {
+      alert(error.message || "Admin 1 verification failed.");
+      return false;
+    }
+  }
+
+  async function adminEditInvoice(invoiceNo) {
+    if (!(await requireHistoryPrimaryAdmin())) return;
+    openEditInvoice(invoiceNo);
+  }
+
+  async function adminDeleteInvoice(invoiceNo) {
+    if (!(await requireHistoryPrimaryAdmin())) return;
+    deleteInvoiceFromHistory(invoiceNo);
+  }
+
   async function fetchApi(params) {
 
     const url =
@@ -1509,9 +1565,9 @@
     menu.dataset.invoiceNo=String(invoiceNo||"");
     menu.innerHTML=`
       <button type="button" role="menuitem" onclick='closeRowActions(); openDetail(${jsNo});'>👁 <span>View</span></button>
-      <button type="button" role="menuitem" class="edit" onclick='closeRowActions(); openEditInvoice(${jsNo});'>✏️ <span>Edit</span></button>
+      <button type="button" role="menuitem" class="edit" onclick='closeRowActions(); adminEditInvoice(${jsNo});'>🔒✏️ <span>Edit — Admin 1</span></button>
       <button type="button" role="menuitem" class="print" onclick='closeRowActions(); printInvoiceFromRow(${jsNo});'>🖨 <span>Print</span></button>
-      <button type="button" role="menuitem" class="danger" onclick='closeRowActions(); deleteInvoiceFromHistory(${jsNo});'>🗑 <span>Delete</span></button>`;
+      <button type="button" role="menuitem" class="danger" onclick='closeRowActions(); adminDeleteInvoice(${jsNo});'>🔒🗑 <span>Delete — Admin 1</span></button>`;
 
     menu.classList.add("show");
     menu.setAttribute("aria-hidden","false");
@@ -1584,7 +1640,7 @@
 
   function buildEditPayload(){
     const totals=recalcEditInvoice();const items=(currentEditInvoice.items||[]).map((item,index)=>{const tr=document.querySelector(`#editItemsBody tr[data-edit-index="${index}"]`);const qty=Math.max(0,numberValue(tr?.querySelector(".edit-item-qty")?.value));const price=Math.max(0,numberValue(tr?.querySelector(".edit-item-price")?.value));return {lineId:item.lineId||"",productCode:item.productCode,productName:item.productName||item.productCode||"",productBarcode:item.productBarcode||item.barcode||"",productNote:item.productNote||"",unit:item.unit||"",qty,unitPrice:price,amount:qty*price};}).filter(x=>x.qty>0);
-    return {invoiceId:currentEditInvoice.invoiceId,invoiceNo:currentEditInvoice.invoiceNo,invoiceDate:$("editInvoiceDate").value,customer:$("editCustomer").value.trim(),locationCode:$("editLocationCode").value,salesperson:$("editSalesperson").value.trim(),paymentMethod:$("editPaymentMethod").value,currency:$("editCurrency").value,exchangeRate:numberValue($("editExchangeRate").value),subtotal:totals.subtotal,discount:totals.discount,grandTotal:totals.grandTotal,amountPaid:totals.amountPaid,outstanding:totals.outstanding,dueDate:$("editDueDate").value,bankPayment:$("editBankPayment").value.trim(),bankReference:$("editBankReference").value.trim(),batchNumber:$("editBatchNumber").value.trim(),note:$("editNote").value.trim(),items};
+    return {adminCode:historyPrimaryAdminCode,invoiceId:currentEditInvoice.invoiceId,invoiceNo:currentEditInvoice.invoiceNo,invoiceDate:$("editInvoiceDate").value,customer:$("editCustomer").value.trim(),locationCode:$("editLocationCode").value,salesperson:$("editSalesperson").value.trim(),paymentMethod:$("editPaymentMethod").value,currency:$("editCurrency").value,exchangeRate:numberValue($("editExchangeRate").value),subtotal:totals.subtotal,discount:totals.discount,grandTotal:totals.grandTotal,amountPaid:totals.amountPaid,outstanding:totals.outstanding,dueDate:$("editDueDate").value,bankPayment:$("editBankPayment").value.trim(),bankReference:$("editBankReference").value.trim(),batchNumber:$("editBatchNumber").value.trim(),note:$("editNote").value.trim(),items};
   }
 
   function postHistoryAction(action,fieldName,payload){
@@ -1592,14 +1648,16 @@
   }
 
   async function saveEditedInvoice(){
-    if(!currentEditInvoice)return;const payload=buildEditPayload();if(!payload.customer||!payload.locationCode||!payload.salesperson||!payload.invoiceDate||!payload.items.length){alert("Invoice Date, Customer, Location, Salesperson and at least one item are required.");return;}if(!confirm("Save changes to "+payload.invoiceNo+"?\n\nThis will update the Sales Database."))return;const btn=$("editSaveBtn");const old=btn.innerHTML;btn.disabled=true;btn.innerHTML="⏳ Saving...";try{await postHistoryAction("updateInvoice","invoiceData",payload);closeEditInvoice();await loadInvoices();alert("Invoice "+payload.invoiceNo+" update request was sent to Sales Database.");}catch(error){alert("Could not update invoice.\n\n"+(error.message||"Please try again."));}finally{btn.disabled=false;btn.innerHTML=old;}
+    if(!currentEditInvoice)return;
+    if(!(await requireHistoryPrimaryAdmin()))return;
+    const payload=buildEditPayload();if(!payload.customer||!payload.locationCode||!payload.salesperson||!payload.invoiceDate||!payload.items.length){alert("Invoice Date, Customer, Location, Salesperson and at least one item are required.");return;}if(!confirm("Save changes to "+payload.invoiceNo+"?\n\nThis will update the Sales Database."))return;const btn=$("editSaveBtn");const old=btn.innerHTML;btn.disabled=true;btn.innerHTML="⏳ Saving...";try{await postHistoryAction("updateInvoice","invoiceData",payload);closeEditInvoice();await loadInvoices();alert("Invoice "+payload.invoiceNo+" update request was sent to Sales Database.");}catch(error){alert("Could not update invoice.\n\n"+(error.message||"Please try again."));}finally{btn.disabled=false;btn.innerHTML=old;}
   }
 
   async function deleteInvoiceFromHistory(invoiceNo){
     const typed=prompt("DELETE INVOICE\n\nThis will remove the invoice, its Invoice Item row, and related Payment/Return rows.\n\nType the Invoice No. to confirm:\n"+invoiceNo);
     if(typed===null)return;if(String(typed).trim().toLowerCase()!==String(invoiceNo).trim().toLowerCase()){alert("Invoice No. did not match. Nothing was deleted.");return;}
     if(!confirm("Final confirmation: permanently delete "+invoiceNo+"?"))return;
-    try{await postHistoryAction("deleteInvoice","deleteData",{invoiceNo});await loadInvoices();alert("Delete request for "+invoiceNo+" was sent to Sales Database.");}catch(error){alert("Could not delete invoice.\n\n"+(error.message||"Please try again."));}
+    try{await postHistoryAction("deleteInvoice","deleteData",{invoiceNo,adminCode:historyPrimaryAdminCode});await loadInvoices();alert("Delete request for "+invoiceNo+" was sent to Sales Database.");}catch(error){alert("Could not delete invoice.\n\n"+(error.message||"Please try again."));}
   }
 
   function closeEditInvoice(){$("editModal").classList.remove("show");currentEditInvoice=null;}
