@@ -605,9 +605,6 @@
 
 .history-final-header{display:flex!important;justify-content:space-between!important;align-items:flex-start!important;gap:25px!important;min-height:70px!important}.history-final-company{line-height:1.15!important}.history-final-company-name{font-size:25px!important;font-weight:800!important;letter-spacing:1.2px!important;color:#174a91!important;margin-bottom:2px!important}.history-final-company-tagline{font-size:11px!important;font-weight:500!important;letter-spacing:.8px!important;color:#56657a!important}.history-final-header-message{text-align:right!important;color:#2867b2!important;font-size:11px!important;line-height:1.35!important;padding-top:5px!important}.history-final-bill-row{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 205px!important;gap:20px!important;margin-bottom:18px!important;min-height:105px!important}.history-final-bill,.history-final-shipping{font-size:13px!important;line-height:1.5!important;min-width:0!important}.history-final-shipping{border-left:1px solid #9eacc0!important;padding-left:20px!important}.history-final-bill-label,.history-final-shipping-label{font-weight:800!important;font-size:14px!important;margin-bottom:10px!important}.history-final-bill-detail-row{display:grid!important;grid-template-columns:112px 10px minmax(0,1fr)!important;gap:4px!important;margin-bottom:7px!important;align-items:start!important}.history-final-bill-detail-label{font-weight:700!important;white-space:nowrap!important}.history-final-shipping-value{white-space:pre-line!important;overflow-wrap:anywhere!important}
 
-
-    .history-final-reversal-note{margin-top:4px;font-size:10.5px;color:#c56b00;font-weight:700}
-    .history-final-reversal-summary{margin-top:8px;padding:7px 9px;border:1px solid #e2bd6c;background:#fff8e8;color:#8a5a00;font-size:11px;font-weight:700}
 </style>
 </head>
 
@@ -803,6 +800,9 @@
   // The full invoice list is downloaded only when that token changes.
   const HISTORY_SYNC_INTERVAL_MS = 20000;
   const HISTORY_DEVICE_CACHE_KEY = "bb_invoice_history_device_cache_v45";
+  const HISTORY_DETAIL_CACHE_PREFIX = "bb_invoice_history_detail_v2_";
+  const HISTORY_DETAIL_PREFETCH_LIMIT = 6;
+  const HISTORY_DETAIL_PREFETCH_CONCURRENCY = 3;
   let historyLastRevision = "";
   let historySyncTimer = null;
   let historySyncBusy = false;
@@ -954,6 +954,106 @@
     });
   }
 
+  function historyDetailCacheKey(invoiceNo) {
+    return HISTORY_DETAIL_CACHE_PREFIX + encodeURIComponent(String(invoiceNo || "").trim());
+  }
+
+  function readHistoryDetailCache(invoiceNo) {
+    try {
+      const raw = localStorage.getItem(historyDetailCacheKey(invoiceNo));
+      if (!raw) return null;
+
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.invoice) return null;
+
+      return parsed;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function saveHistoryDetailCache(invoiceNo, invoice, revision) {
+    try {
+      const payload = {
+        revision: String(revision || historyLastRevision || ""),
+        savedAt: Date.now(),
+        invoice: invoice
+      };
+      localStorage.setItem(
+        historyDetailCacheKey(invoiceNo),
+        JSON.stringify(payload)
+      );
+    } catch (error) {
+      console.warn("Invoice detail cache unavailable:", error);
+    }
+  }
+
+  function removeHistoryDetailCache(invoiceNo) {
+    try {
+      localStorage.removeItem(historyDetailCacheKey(invoiceNo));
+    } catch (_) {}
+  }
+
+  async function fetchAndCacheInvoiceDetail(invoiceNo, options = {}) {
+    const silent = options && options.silent === true;
+
+    try {
+      const data = await fetchApi({
+        action: "invoiceDetail",
+        invoiceNo: invoiceNo
+      });
+
+      if (!data || !data.invoice) {
+        throw new Error("Invoice detail was not returned.");
+      }
+
+      await enrichHistoryInvoiceFromMaster(data.invoice);
+      saveHistoryDetailCache(invoiceNo, data.invoice, historyLastRevision);
+
+      return data.invoice;
+
+    } catch (error) {
+      if (!silent) throw error;
+      console.warn("Invoice detail prefetch failed:", invoiceNo, error);
+      return null;
+    }
+  }
+
+  async function prefetchVisibleInvoiceDetails(invoices) {
+    const list = Array.isArray(invoices)
+      ? invoices.slice(0, HISTORY_DETAIL_PREFETCH_LIMIT)
+      : [];
+
+    const queue = list.filter(invoice => {
+      const no = String(invoice?.invoiceNo || "").trim();
+      if (!no) return false;
+
+      const cached = readHistoryDetailCache(no);
+      return !cached || String(cached.revision || "") !== String(historyLastRevision || "");
+    });
+
+    if (!queue.length) return;
+
+    let index = 0;
+
+    async function worker() {
+      while (index < queue.length) {
+        const current = queue[index++];
+        await fetchAndCacheInvoiceDetail(current.invoiceNo, { silent: true });
+      }
+    }
+
+    const workers = [];
+    const count = Math.min(HISTORY_DETAIL_PREFETCH_CONCURRENCY, queue.length);
+
+    for (let i = 0; i < count; i++) {
+      workers.push(worker());
+    }
+
+    await Promise.allSettled(workers);
+  }
+
+
   function readHistoryDeviceCache() {
     try {
       const raw = localStorage.getItem(HISTORY_DEVICE_CACHE_KEY);
@@ -1082,6 +1182,10 @@
 
       renderInvoices(invoices);
       saveHistoryDeviceCache(invoices, revision);
+
+      // Preload the newest invoice details in the background.
+      // The list stays responsive; Preview becomes instant.
+      prefetchVisibleInvoiceDetails(invoices);
 
     } catch (error) {
 
@@ -1411,33 +1515,62 @@
     $("detailTitle").textContent =
       "Invoice " + invoiceNo;
 
-    $("detailLoading").style.display =
-      "block";
+    const cached = readHistoryDetailCache(invoiceNo);
 
-    $("detailContent").style.display =
-      "none";
+    /*
+     * FAST PATH:
+     * Render the saved detail immediately.
+     * Then refresh silently only if the revision changed.
+     */
+    if (cached && cached.invoice) {
+      $("detailLoading").style.display = "none";
+      $("detailContent").style.display = "block";
+
+      renderDetail(cached.invoice);
+
+      const cachedRevision = String(cached.revision || "");
+      const currentRevision = String(historyLastRevision || "");
+
+      if (!currentRevision || cachedRevision === currentRevision) {
+        return;
+      }
+
+      // Database changed since this detail was cached.
+      // Keep old detail visible while refreshing silently.
+      fetchAndCacheInvoiceDetail(invoiceNo, { silent: true })
+        .then(invoice => {
+          if (invoice && $("detailModal").classList.contains("show")) {
+            renderDetail(invoice);
+          }
+        });
+
+      return;
+    }
+
+    /*
+     * FIRST-TIME PATH:
+     * Only this invoice needs one database request.
+     * Future opens use local device storage instantly.
+     */
+    $("detailLoading").style.display = "block";
+    $("detailLoading").textContent = "Loading invoice...";
+    $("detailContent").style.display = "none";
 
     try {
 
-      const data =
-        await fetchApi({
-          action: "invoiceDetail",
-          invoiceNo: invoiceNo
-        });
+      const invoice = await fetchAndCacheInvoiceDetail(invoiceNo);
 
-      if (!data.invoice) {
-        throw new Error(
-          "Invoice detail was not returned."
-        );
-      }
+      $("detailLoading").style.display = "none";
+      $("detailContent").style.display = "block";
 
-      await enrichHistoryInvoiceFromMaster(data.invoice);
-      renderDetail(data.invoice);
+      renderDetail(invoice);
 
     } catch (error) {
 
       console.error(error);
 
+      $("detailLoading").style.display = "block";
+      $("detailContent").style.display = "none";
       $("detailLoading").textContent =
         error.message ||
         "Unable to load invoice.";
@@ -1481,9 +1614,6 @@
     summary.push(`<div class="history-final-summary-row grand"><span>Grand Total</span><span class="history-final-summary-value">${money(invoice.grandTotal)}</span></div>`);
     summary.push(`<div class="history-final-summary-row"><span class="history-final-summary-label">Amount Paid</span><span class="history-final-summary-value">${money(amountPaid)}</span></div>`);
     if(outstanding>0) summary.push(`<div class="history-final-summary-row credit"><span class="history-final-summary-label">Credit Amount</span><span class="history-final-summary-value">${money(outstanding)}</span></div>`);
-    if(numberValue(invoice.reversalAmount)>0){
-      summary.push(`<div class="history-final-reversal-summary">${esc(invoice.reversalStatus||"Invoice Reversal")} · Reversed ${money(invoice.reversalAmount)}</div>`);
-    }
 
     const noteHtml=String(invoice.note||"").trim()?String(invoice.note).split(/\r?\n/).map(line=>`<div class="history-final-note-line">${esc(line)}</div>`).join(""):`<div class="history-final-note-line">&nbsp;</div>`;
     const bankInfo=[invoice.bankPayment?`Bank Payment: ${esc(invoice.bankPayment)}`:"",invoice.bankReference?`Reference: ${esc(invoice.bankReference)}`:""].filter(Boolean).join("<br>");
@@ -1656,7 +1786,7 @@
   async function saveEditedInvoice(){
     if(!currentEditInvoice)return;
     if(!(await requireHistoryPrimaryAdmin()))return;
-    const payload=buildEditPayload();if(!payload.customer||!payload.locationCode||!payload.salesperson||!payload.invoiceDate||!payload.items.length){alert("Invoice Date, Customer, Location, Salesperson and at least one item are required.");return;}if(!confirm("Save changes to "+payload.invoiceNo+"?\n\nThis will update the Sales Database."))return;const btn=$("editSaveBtn");const old=btn.innerHTML;btn.disabled=true;btn.innerHTML="⏳ Saving...";try{await postHistoryAction("updateInvoice","invoiceData",payload);closeEditInvoice();await loadInvoices();alert("Invoice "+payload.invoiceNo+" update request was sent to Sales Database.");}catch(error){alert("Could not update invoice.\n\n"+(error.message||"Please try again."));}finally{btn.disabled=false;btn.innerHTML=old;}
+    const payload=buildEditPayload();if(!payload.customer||!payload.locationCode||!payload.salesperson||!payload.invoiceDate||!payload.items.length){alert("Invoice Date, Customer, Location, Salesperson and at least one item are required.");return;}if(!confirm("Save changes to "+payload.invoiceNo+"?\n\nThis will update the Sales Database."))return;const btn=$("editSaveBtn");const old=btn.innerHTML;btn.disabled=true;btn.innerHTML="⏳ Saving...";try{await postHistoryAction("updateInvoice","invoiceData",payload);removeHistoryDetailCache(payload.invoiceNo);closeEditInvoice();await loadInvoices();alert("Invoice "+payload.invoiceNo+" update request was sent to Sales Database.");}catch(error){alert("Could not update invoice.\n\n"+(error.message||"Please try again."));}finally{btn.disabled=false;btn.innerHTML=old;}
   }
 
   async function deleteInvoiceFromHistory(invoiceNo){
@@ -1719,6 +1849,11 @@
     } else {
       // Cache is already visible; only check the tiny revision token now.
       await historySmartSyncTick(true);
+
+      const cached = readHistoryDeviceCache();
+      if (cached && Array.isArray(cached.invoices)) {
+        prefetchVisibleInvoiceDetails(cached.invoices);
+      }
     }
 
     startHistorySmartSync();
