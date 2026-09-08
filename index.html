@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BIG BROTHER — Invoice History Workspace</title>
+  <!-- V4.6.3: Invoice History date display DD-Sep-YYYY, time removed; newest-to-oldest flow preserved -->
   <!-- V4.6.2: global dashboard navigation + clickable company brand -->
 
   <style>
@@ -1226,7 +1227,7 @@
       const jsNo = JSON.stringify(String(invoice.invoiceNo || ""));
       return `<tr>
         <td><a class="invoice-link" href="#" onclick='openDetail(${jsNo}); return false;'>${no}</a></td>
-        <td>${escapeHtml(invoice.invoiceDate || "")}</td>
+        <td>${escapeHtml(historyDate(invoice.invoiceDate))}</td>
         <td>${escapeHtml(invoice.customer || "")}</td>
         <td><strong>${escapeHtml(invoice.locationCode || "")}</strong></td>
         <td>${escapeHtml(invoice.salesperson || "")}</td>
