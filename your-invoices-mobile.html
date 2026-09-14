@@ -4,168 +4,2473 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>BIG BROTHER — Your Invoices Mobile</title>
+
 <style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif}
-#invoiceFrame{display:block;width:100%;height:100%;border:0;background:#f4f7fb}
-#boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f4f7fb;color:#17457a;font-weight:800;z-index:5}
-#boot.hide{display:none}
+html,
+body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#f4f7fb;
+  font-family:Arial,Helvetica,sans-serif;
+}
+
+#invoiceFrame{
+  display:block;
+  width:100%;
+  height:100%;
+  border:0;
+  background:#f4f7fb;
+}
+
+#boot{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#f4f7fb;
+  color:#17457a;
+  font-size:13px;
+  font-weight:800;
+  z-index:5;
+}
+
+#boot.hide{
+  display:none;
+}
 </style>
 </head>
+
 <body>
+
 <div id="boot">Loading Your Invoices…</div>
-<iframe id="invoiceFrame" src="your-invoices.html?embed=1&mobileSkin=1&v=20260914-2" title="Your Invoices"></iframe>
+
+<iframe
+  id="invoiceFrame"
+  src="your-invoices.html?embed=1&mobileSkin=1&v=20260914-3"
+  title="Your Invoices">
+</iframe>
+
 <script>
 (function(){
 'use strict';
-const frame=document.getElementById('invoiceFrame');
-const boot=document.getElementById('boot');
-const MOBILE_CSS=`
-:root{--bb-blue:#1768d5;--bb-navy:#123f78;--bb-bg:#f4f7fb;--bb-line:#dfe7f0;--bb-text:#18324e;--bb-muted:#6d7e92;--bb-red:#d73545;--bb-green:#159a5b;--bb-amber:#b57500}
-html,body{background:var(--bb-bg)!important;overflow-x:hidden!important}
-body{min-width:0!important}
-.main{margin:0!important;width:100%!important;max-width:none!important;padding:8px 8px 18px!important}
-.topbar{display:none!important}
-#errorBox{margin:0 0 7px!important;padding:8px 10px!important;border-radius:9px!important;font-size:10px!important}
-.summary{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;margin:0 1px 8px!important;min-height:38px!important}
-.summary-count{font-size:11px!important;color:#526b84!important;font-weight:900!important}
-.loading{font-size:9px!important}
-.bb-mobile-filter-trigger{border:1px solid #cbd8e7;background:#fff;color:var(--bb-navy);border-radius:9px;min-height:36px;padding:7px 11px;font-size:10px;font-weight:900;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 7px rgba(23,63,119,.04)}
-.filters{position:fixed!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;z-index:3001!important;margin:0!important;padding:10px 10px calc(12px + env(safe-area-inset-bottom))!important;border:1px solid var(--bb-line)!important;border-radius:18px 18px 0 0!important;background:#fff!important;box-shadow:0 -18px 48px rgba(18,50,86,.18)!important;transform:translateY(110%)!important;transition:transform .22s ease!important;max-height:88dvh!important;overflow:auto!important}
-.filters.bb-mobile-open{transform:translateY(0)!important}
-.bb-invoice-filter-backdrop{display:none;position:fixed;inset:0;z-index:3000;background:rgba(9,27,48,.54)}
-.bb-invoice-filter-backdrop.show{display:block}
-.bb-mobile-filter-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 1px 10px;margin-bottom:8px;border-bottom:1px solid var(--bb-line)}
-.bb-mobile-filter-head strong{font-size:17px;color:var(--bb-navy)}
-.bb-mobile-filter-head span{display:block;margin-top:2px;color:var(--bb-muted);font-size:9px}
-.bb-mobile-filter-close{width:34px;height:34px;border:0;border-radius:50%;background:#edf2f8;color:var(--bb-navy);font-size:20px;font-weight:900}
-.filter-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;align-items:end!important}
-.filter-grid .field{min-width:0!important}
-.field label{margin-bottom:4px!important;font-size:8.5px!important;line-height:1!important;text-transform:uppercase!important;letter-spacing:.25px!important;color:#536b84!important}
-.field input,.field select{width:100%!important;min-width:0!important;height:40px!important;border-radius:9px!important;padding:0 9px!important;font-size:11px!important;background:#fff!important}
-.filter-grid>.btn{width:100%!important;height:40px!important;border-radius:9px!important;font-size:10px!important;padding:0 8px!important}
-.filter-grid>.btn-primary{grid-column:2!important;grid-row:auto!important}
-.filter-grid>.btn-secondary{grid-column:1!important;grid-row:auto!important}
-.table-card{border:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}
-.table-card>.table-wrap{overflow:visible!important}
-.table-card table{display:block!important;width:100%!important;min-width:0!important;border-collapse:separate!important}
-.table-card thead{display:none!important}
-#invoiceBody{display:grid!important;gap:8px!important;width:100%!important}
-#invoiceBody>tr{display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;grid-template-areas:'invoice status action' 'customer customer customer' 'date location salesperson' 'payment currency currency' 'grand paid outstanding'!important;column-gap:7px!important;row-gap:6px!important;align-items:center!important;padding:10px!important;border:1px solid var(--bb-line)!important;border-radius:13px!important;background:#fff!important;box-shadow:0 2px 8px rgba(23,63,119,.045)!important;overflow:hidden!important}
-#invoiceBody>tr>td{display:block!important;min-width:0!important;padding:0!important;border:0!important;background:transparent!important;font-size:9.5px!important;line-height:1.2!important;white-space:normal!important}
-#invoiceBody>tr>td:nth-child(1){grid-area:invoice!important;align-self:center!important}
-#invoiceBody>tr>td:nth-child(1) .invoice-link{display:block!important;font-size:13px!important;font-weight:900!important;color:var(--bb-navy)!important;text-decoration:none!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-#invoiceBody>tr>td:nth-child(2){grid-area:date!important;color:#60758c!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-#invoiceBody>tr>td:nth-child(2)::before{content:'Date ';font-size:7px;font-weight:900;color:#8190a1;display:block;margin-bottom:2px;text-transform:uppercase}
-#invoiceBody>tr>td:nth-child(3){grid-area:customer!important;font-size:13px!important;font-weight:900!important;color:var(--bb-text)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;padding-top:1px!important}
-#invoiceBody>tr>td:nth-child(4){grid-area:location!important;color:#60758c!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-#invoiceBody>tr>td:nth-child(4)::before{content:'Location ';font-size:7px;font-weight:900;color:#8190a1;display:block;margin-bottom:2px;text-transform:uppercase}
-#invoiceBody>tr>td:nth-child(5){grid-area:salesperson!important;color:#60758c!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-#invoiceBody>tr>td:nth-child(5)::before{content:'Salesperson ';font-size:7px;font-weight:900;color:#8190a1;display:block;margin-bottom:2px;text-transform:uppercase}
-#invoiceBody>tr>td:nth-child(6){grid-area:payment!important;color:#60758c!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-#invoiceBody>tr>td:nth-child(6)::before{content:'Payment ';font-size:7px;font-weight:900;color:#8190a1;display:block;margin-bottom:2px;text-transform:uppercase}
-#invoiceBody>tr>td:nth-child(7){grid-area:currency!important;color:#60758c!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-#invoiceBody>tr>td:nth-child(7)::before{content:'Currency ';font-size:7px;font-weight:900;color:#8190a1;display:block;margin-bottom:2px;text-transform:uppercase}
-#invoiceBody>tr>td:nth-child(8){grid-area:grand!important}
-#invoiceBody>tr>td:nth-child(9){grid-area:paid!important}
-#invoiceBody>tr>td:nth-child(10){grid-area:outstanding!important}
-#invoiceBody>tr>td:nth-child(8),#invoiceBody>tr>td:nth-child(9),#invoiceBody>tr>td:nth-child(10){padding:7px 7px!important;border:1px solid #edf1f6!important;border-radius:8px!important;background:#f7f9fc!important;text-align:left!important;font-size:10.5px!important;font-weight:900!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-#invoiceBody>tr>td:nth-child(8)::before{content:'Grand Total';display:block;font-size:6.8px;color:var(--bb-muted);font-weight:700;margin-bottom:2px;text-transform:uppercase}
-#invoiceBody>tr>td:nth-child(9)::before{content:'Paid';display:block;font-size:6.8px;color:var(--bb-muted);font-weight:700;margin-bottom:2px;text-transform:uppercase}
-#invoiceBody>tr>td:nth-child(10)::before{content:'Outstanding';display:block;font-size:6.8px;color:var(--bb-muted);font-weight:700;margin-bottom:2px;text-transform:uppercase}
-#invoiceBody>tr>td:nth-child(9){color:var(--bb-green)!important}
-#invoiceBody>tr>td:nth-child(10){color:var(--bb-red)!important}
-#invoiceBody>tr>td:nth-child(11){grid-area:status!important;justify-self:end!important}
-#invoiceBody .badge{font-size:8px!important;padding:4px 7px!important;white-space:nowrap!important}
-#invoiceBody>tr>td:nth-child(12){grid-area:action!important;justify-self:end!important}
-#invoiceBody .action-menu-btn{min-width:48px!important;height:32px!important;border:1px solid #cbd9e9!important;border-radius:8px!important;background:#f7faff!important;color:var(--bb-blue)!important;padding:0 7px!important;font-size:8.5px!important;font-weight:900!important;white-space:nowrap!important}
-#invoiceBody>tr.bb-empty-row{display:block!important;padding:24px 10px!important}.bb-empty-row .empty{display:block!important;text-align:center!important;color:var(--bb-muted)!important;padding:0!important}
-#floatingActionMenu{display:none!important}
-/* ===== ORIGINAL INVOICE LAYOUT, MOBILE RESPONSIVE ONLY ===== */
-#detailModal.modal{padding:0!important;background:#eef2f7!important;overflow:hidden!important}
-#detailModal.show{display:block!important}
-#detailModal .modal-card{width:100%!important;max-width:none!important;height:100dvh!important;margin:0!important;border-radius:0!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;box-shadow:none!important;background:#eef2f7!important}
-#detailModal .modal-head{position:relative!important;z-index:5!important;flex:0 0 auto!important;padding:10px 11px!important;background:#fff!important;border-bottom:1px solid var(--bb-line)!important;box-shadow:0 2px 7px rgba(23,63,119,.05)!important}
-#detailModal .modal-head h2{font-size:16px!important;color:var(--bb-navy)!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-#detailModal .close{width:34px!important;height:34px!important;flex:0 0 34px!important}
-#detailLoading{padding:24px 12px!important;text-align:center!important;font-size:11px!important}
-#detailContent{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important}
-#detailModal .history-invoice-wrap{padding:6px!important;background:#eef2f7!important;overflow-x:hidden!important}
-#detailModal .history-final-invoice{width:100%!important;max-width:794px!important;margin:0 auto!important}
-#detailModal .history-invoice-actions{position:sticky!important;bottom:0!important;z-index:6!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:5px!important;padding:7px 6px calc(8px + env(safe-area-inset-bottom))!important;background:rgba(238,242,247,.97)!important;border-top:1px solid #d7e0ea!important;backdrop-filter:blur(8px)!important}
-#detailModal .history-action-btn{min-height:42px!important;padding:5px 3px!important;border-radius:9px!important;font-size:8px!important;line-height:1.1!important;white-space:normal!important}
-@media(max-width:390px){
- .main{padding:6px 6px 16px!important}.filter-grid{gap:6px!important}.field input,.field select{height:38px!important;font-size:10px!important}
- #invoiceBody>tr{padding:8px!important;column-gap:5px!important;row-gap:5px!important}#invoiceBody>tr>td:nth-child(1) .invoice-link,#invoiceBody>tr>td:nth-child(3){font-size:12px!important}#invoiceBody>tr>td:nth-child(8),#invoiceBody>tr>td:nth-child(9),#invoiceBody>tr>td:nth-child(10){padding:6px 5px!important;font-size:9.5px!important}
- #detailModal .history-action-btn{font-size:7.2px!important}
+
+const frame = document.getElementById('invoiceFrame');
+const boot = document.getElementById('boot');
+
+
+/* =========================================================
+   MOBILE ONLY CSS
+   ========================================================= */
+const MOBILE_CSS = String.raw`
+
+:root{
+  --bb-blue:#1768d5;
+  --bb-navy:#123f78;
+  --bb-bg:#f4f7fb;
+  --bb-line:#dfe7f0;
+  --bb-text:#18324e;
+  --bb-muted:#6d7e92;
+  --bb-red:#d73545;
+  --bb-green:#159a5b;
+  --bb-amber:#b57500;
 }
+
+
+/* =========================================================
+   MOBILE PAGE
+   ========================================================= */
+
+html,
+body{
+  background:var(--bb-bg)!important;
+  overflow-x:hidden!important;
+}
+
+body{
+  min-width:0!important;
+}
+
+.main{
+  margin:0!important;
+  width:100%!important;
+  max-width:none!important;
+  padding:8px 8px 18px!important;
+}
+
+.topbar{
+  display:none!important;
+}
+
+#errorBox{
+  margin:0 0 7px!important;
+  padding:8px 10px!important;
+  border-radius:9px!important;
+  font-size:10px!important;
+}
+
+
+/* =========================================================
+   SUMMARY + FILTER BUTTON
+   ========================================================= */
+
+.summary{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  margin:0 1px 8px!important;
+  min-height:38px!important;
+}
+
+.summary-count{
+  font-size:11px!important;
+  color:#526b84!important;
+  font-weight:900!important;
+}
+
+.loading{
+  font-size:9px!important;
+}
+
+.bb-mobile-filter-trigger{
+  flex:0 0 auto;
+  min-height:36px;
+  padding:7px 11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+
+  border:1px solid #cbd8e7;
+  border-radius:9px;
+
+  background:#fff;
+  color:var(--bb-navy);
+
+  font-size:10px;
+  font-weight:900;
+
+  box-shadow:0 2px 7px rgba(23,63,119,.04);
+}
+
+
+/* =========================================================
+   FILTER BOTTOM SHEET
+   ========================================================= */
+
+.filters{
+  position:fixed!important;
+
+  left:0!important;
+  right:0!important;
+  top:auto!important;
+  bottom:0!important;
+
+  z-index:3001!important;
+
+  margin:0!important;
+
+  padding:
+    10px
+    10px
+    calc(12px + env(safe-area-inset-bottom))
+    !important;
+
+  max-height:88dvh!important;
+  overflow:auto!important;
+
+  border:1px solid var(--bb-line)!important;
+  border-radius:18px 18px 0 0!important;
+
+  background:#fff!important;
+
+  box-shadow:
+    0 -18px 48px rgba(18,50,86,.18)
+    !important;
+
+  transform:translateY(110%)!important;
+
+  transition:
+    transform .22s ease!important;
+}
+
+.filters.bb-mobile-open{
+  transform:translateY(0)!important;
+}
+
+.bb-invoice-filter-backdrop{
+  display:none;
+
+  position:fixed;
+  inset:0;
+
+  z-index:3000;
+
+  background:rgba(9,27,48,.54);
+}
+
+.bb-invoice-filter-backdrop.show{
+  display:block;
+}
+
+.bb-mobile-filter-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+
+  padding:2px 1px 10px;
+
+  margin-bottom:8px;
+
+  border-bottom:1px solid var(--bb-line);
+}
+
+.bb-mobile-filter-head strong{
+  display:block;
+  font-size:17px;
+  line-height:1.1;
+  color:var(--bb-navy);
+}
+
+.bb-mobile-filter-head span{
+  display:block;
+  margin-top:3px;
+
+  color:var(--bb-muted);
+
+  font-size:9px;
+  line-height:1.25;
+}
+
+.bb-mobile-filter-close{
+  width:34px;
+  height:34px;
+
+  flex:0 0 34px;
+
+  border:0;
+  border-radius:50%;
+
+  background:#edf2f8;
+  color:var(--bb-navy);
+
+  font-size:20px;
+  font-weight:900;
+}
+
+.filter-grid{
+  display:grid!important;
+
+  grid-template-columns:
+    minmax(0,1fr)
+    minmax(0,1fr)
+    !important;
+
+  gap:8px!important;
+
+  align-items:end!important;
+}
+
+.filter-grid .field{
+  min-width:0!important;
+}
+
+.field label{
+  display:block!important;
+
+  margin-bottom:4px!important;
+
+  color:#536b84!important;
+
+  font-size:8.5px!important;
+  line-height:1!important;
+
+  font-weight:800!important;
+
+  text-transform:uppercase!important;
+
+  letter-spacing:.25px!important;
+}
+
+.field input,
+.field select{
+  width:100%!important;
+  min-width:0!important;
+
+  height:40px!important;
+
+  padding:0 9px!important;
+
+  border-radius:9px!important;
+
+  background:#fff!important;
+
+  font-size:11px!important;
+}
+
+.filter-grid > .btn{
+  width:100%!important;
+
+  height:40px!important;
+
+  padding:0 8px!important;
+
+  border-radius:9px!important;
+
+  font-size:10px!important;
+}
+
+.filter-grid > .btn-primary{
+  grid-column:2!important;
+}
+
+.filter-grid > .btn-secondary{
+  grid-column:1!important;
+}
+
+
+/* =========================================================
+   INVOICE LIST → MOBILE CARDS
+   ========================================================= */
+
+.table-card{
+  border:0!important;
+
+  background:transparent!important;
+
+  box-shadow:none!important;
+
+  overflow:visible!important;
+}
+
+.table-card > .table-wrap{
+  overflow:visible!important;
+}
+
+.table-card table{
+  display:block!important;
+
+  width:100%!important;
+
+  min-width:0!important;
+
+  border-collapse:separate!important;
+}
+
+.table-card thead{
+  display:none!important;
+}
+
+#invoiceBody{
+  display:grid!important;
+
+  gap:8px!important;
+
+  width:100%!important;
+}
+
+#invoiceBody > tr{
+  display:grid!important;
+
+  grid-template-columns:
+    minmax(0,1fr)
+    auto
+    auto
+    !important;
+
+  grid-template-areas:
+    "invoice status action"
+    "customer customer customer"
+    "date location salesperson"
+    "payment currency currency"
+    "grand paid outstanding"
+    !important;
+
+  column-gap:7px!important;
+  row-gap:6px!important;
+
+  align-items:center!important;
+
+  padding:10px!important;
+
+  border:1px solid var(--bb-line)!important;
+  border-radius:13px!important;
+
+  background:#fff!important;
+
+  box-shadow:
+    0 2px 8px rgba(23,63,119,.045)
+    !important;
+
+  overflow:hidden!important;
+}
+
+#invoiceBody > tr > td{
+  display:block!important;
+
+  min-width:0!important;
+
+  padding:0!important;
+
+  border:0!important;
+
+  background:transparent!important;
+
+  font-size:9.5px!important;
+  line-height:1.2!important;
+
+  white-space:normal!important;
+}
+
+
+/* Invoice No */
+
+#invoiceBody > tr > td:nth-child(1){
+  grid-area:invoice!important;
+}
+
+#invoiceBody > tr > td:nth-child(1) .invoice-link{
+  display:block!important;
+
+  font-size:13px!important;
+  font-weight:900!important;
+
+  color:var(--bb-navy)!important;
+
+  text-decoration:none!important;
+
+  white-space:nowrap!important;
+
+  overflow:hidden!important;
+
+  text-overflow:ellipsis!important;
+}
+
+
+/* Date */
+
+#invoiceBody > tr > td:nth-child(2){
+  grid-area:date!important;
+
+  color:#60758c!important;
+
+  white-space:nowrap!important;
+
+  overflow:hidden!important;
+
+  text-overflow:ellipsis!important;
+}
+
+#invoiceBody > tr > td:nth-child(2)::before{
+  content:"Date";
+
+  display:block;
+
+  margin-bottom:2px;
+
+  color:#8190a1;
+
+  font-size:7px;
+
+  font-weight:900;
+
+  text-transform:uppercase;
+}
+
+
+/* Customer */
+
+#invoiceBody > tr > td:nth-child(3){
+  grid-area:customer!important;
+
+  padding-top:1px!important;
+
+  color:var(--bb-text)!important;
+
+  font-size:13px!important;
+
+  font-weight:900!important;
+
+  white-space:nowrap!important;
+
+  overflow:hidden!important;
+
+  text-overflow:ellipsis!important;
+}
+
+
+/* Location */
+
+#invoiceBody > tr > td:nth-child(4){
+  grid-area:location!important;
+
+  color:#60758c!important;
+
+  white-space:nowrap!important;
+
+  overflow:hidden!important;
+
+  text-overflow:ellipsis!important;
+}
+
+#invoiceBody > tr > td:nth-child(4)::before{
+  content:"Location";
+
+  display:block;
+
+  margin-bottom:2px;
+
+  color:#8190a1;
+
+  font-size:7px;
+
+  font-weight:900;
+
+  text-transform:uppercase;
+}
+
+
+/* Salesperson */
+
+#invoiceBody > tr > td:nth-child(5){
+  grid-area:salesperson!important;
+
+  color:#60758c!important;
+
+  white-space:nowrap!important;
+
+  overflow:hidden!important;
+
+  text-overflow:ellipsis!important;
+}
+
+#invoiceBody > tr > td:nth-child(5)::before{
+  content:"Salesperson";
+
+  display:block;
+
+  margin-bottom:2px;
+
+  color:#8190a1;
+
+  font-size:7px;
+
+  font-weight:900;
+
+  text-transform:uppercase;
+}
+
+
+/* Payment */
+
+#invoiceBody > tr > td:nth-child(6){
+  grid-area:payment!important;
+
+  color:#60758c!important;
+
+  white-space:nowrap!important;
+
+  overflow:hidden!important;
+
+  text-overflow:ellipsis!important;
+}
+
+#invoiceBody > tr > td:nth-child(6)::before{
+  content:"Payment";
+
+  display:block;
+
+  margin-bottom:2px;
+
+  color:#8190a1;
+
+  font-size:7px;
+
+  font-weight:900;
+
+  text-transform:uppercase;
+}
+
+
+/* Currency */
+
+#invoiceBody > tr > td:nth-child(7){
+  grid-area:currency!important;
+
+  color:#60758c!important;
+
+  white-space:nowrap!important;
+
+  overflow:hidden!important;
+
+  text-overflow:ellipsis!important;
+}
+
+#invoiceBody > tr > td:nth-child(7)::before{
+  content:"Currency";
+
+  display:block;
+
+  margin-bottom:2px;
+
+  color:#8190a1;
+
+  font-size:7px;
+
+  font-weight:900;
+
+  text-transform:uppercase;
+}
+
+
+/* Amounts */
+
+#invoiceBody > tr > td:nth-child(8){
+  grid-area:grand!important;
+}
+
+#invoiceBody > tr > td:nth-child(9){
+  grid-area:paid!important;
+
+  color:var(--bb-green)!important;
+}
+
+#invoiceBody > tr > td:nth-child(10){
+  grid-area:outstanding!important;
+
+  color:var(--bb-red)!important;
+}
+
+#invoiceBody > tr > td:nth-child(8),
+#invoiceBody > tr > td:nth-child(9),
+#invoiceBody > tr > td:nth-child(10){
+
+  padding:7px!important;
+
+  border:1px solid #edf1f6!important;
+  border-radius:8px!important;
+
+  background:#f7f9fc!important;
+
+  text-align:left!important;
+
+  font-size:10.5px!important;
+
+  font-weight:900!important;
+
+  white-space:nowrap!important;
+
+  overflow:hidden!important;
+
+  text-overflow:ellipsis!important;
+}
+
+#invoiceBody > tr > td:nth-child(8)::before,
+#invoiceBody > tr > td:nth-child(9)::before,
+#invoiceBody > tr > td:nth-child(10)::before{
+
+  display:block;
+
+  margin-bottom:2px;
+
+  color:var(--bb-muted);
+
+  font-size:6.8px;
+
+  font-weight:700;
+
+  text-transform:uppercase;
+}
+
+#invoiceBody > tr > td:nth-child(8)::before{
+  content:"Grand Total";
+}
+
+#invoiceBody > tr > td:nth-child(9)::before{
+  content:"Paid";
+}
+
+#invoiceBody > tr > td:nth-child(10)::before{
+  content:"Outstanding";
+}
+
+
+/* Status */
+
+#invoiceBody > tr > td:nth-child(11){
+  grid-area:status!important;
+
+  justify-self:end!important;
+}
+
+#invoiceBody .badge{
+  padding:4px 7px!important;
+
+  font-size:8px!important;
+
+  white-space:nowrap!important;
+}
+
+
+/* View */
+
+#invoiceBody > tr > td:nth-child(12){
+  grid-area:action!important;
+
+  justify-self:end!important;
+}
+
+#invoiceBody .action-menu-btn{
+  min-width:48px!important;
+
+  height:32px!important;
+
+  padding:0 7px!important;
+
+  border:1px solid #cbd9e9!important;
+  border-radius:8px!important;
+
+  background:#f7faff!important;
+
+  color:var(--bb-blue)!important;
+
+  font-size:8.5px!important;
+
+  font-weight:900!important;
+
+  white-space:nowrap!important;
+}
+
+
+/* Empty */
+
+#invoiceBody > tr.bb-empty-row{
+  display:block!important;
+
+  padding:24px 10px!important;
+}
+
+.bb-empty-row .empty{
+  display:block!important;
+
+  padding:0!important;
+
+  text-align:center!important;
+
+  color:var(--bb-muted)!important;
+}
+
+
+/* salesman mobile doesn't need PC action popup */
+#floatingActionMenu{
+  display:none!important;
+}
+
+
+/* =========================================================
+   MOBILE INVOICE PREVIEW
+   IMPORTANT:
+   WE KEEP THE ORIGINAL 794px INVOICE.
+   THE WHOLE DOCUMENT IS SCALED TO PHONE WIDTH.
+   ========================================================= */
+
+#detailModal.modal{
+  padding:0!important;
+
+  overflow:hidden!important;
+
+  background:#eef2f7!important;
+}
+
+#detailModal.show{
+  display:block!important;
+}
+
+#detailModal .modal-card{
+  display:flex!important;
+
+  flex-direction:column!important;
+
+  width:100%!important;
+
+  max-width:none!important;
+
+  height:100dvh!important;
+
+  margin:0!important;
+
+  border-radius:0!important;
+
+  background:#eef2f7!important;
+
+  box-shadow:none!important;
+
+  overflow:hidden!important;
+}
+
+
+/* top preview header */
+
+#detailModal .modal-head{
+  position:relative!important;
+
+  z-index:20!important;
+
+  flex:0 0 auto!important;
+
+  padding:9px 10px!important;
+
+  background:#fff!important;
+
+  border-bottom:1px solid var(--bb-line)!important;
+
+  box-shadow:
+    0 2px 7px rgba(23,63,119,.05)
+    !important;
+}
+
+#detailModal .modal-head h2{
+  margin:0!important;
+
+  min-width:0!important;
+
+  color:var(--bb-navy)!important;
+
+  font-size:15px!important;
+
+  line-height:1.15!important;
+
+  white-space:nowrap!important;
+
+  overflow:hidden!important;
+
+  text-overflow:ellipsis!important;
+}
+
+#detailModal .close{
+  width:34px!important;
+  height:34px!important;
+
+  flex:0 0 34px!important;
+}
+
+
+/* loading */
+
+#detailLoading{
+  padding:24px 12px!important;
+
+  text-align:center!important;
+
+  font-size:11px!important;
+}
+
+
+/* scroll viewport */
+
+#detailContent{
+  flex:1 1 auto!important;
+
+  min-height:0!important;
+
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+
+  overscroll-behavior:contain;
+}
+
+#detailModal .history-invoice-wrap{
+  padding:6px 6px 12px!important;
+
+  overflow:hidden!important;
+
+  background:#eef2f7!important;
+}
+
+
+/* scaling stage */
+
+#detailModal .bb-history-preview-stage{
+  position:relative!important;
+
+  width:100%!important;
+
+  min-height:1px!important;
+
+  overflow:visible!important;
+
+  margin:0 auto!important;
+
+  --bb-invoice-scale:1;
+}
+
+
+/* =========================================================
+   FORCE ORIGINAL DESKTOP INVOICE DIMENSIONS
+   ========================================================= */
+
+#detailModal
+.bb-history-preview-stage
+.history-final-invoice{
+
+  position:absolute!important;
+
+  left:0!important;
+  top:0!important;
+
+  width:794px!important;
+  min-width:794px!important;
+  max-width:794px!important;
+
+  margin:0!important;
+
+  padding:28px 30px 26px!important;
+
+  border:1px solid #8f8f8f!important;
+
+  border-radius:0!important;
+
+  background:#fff!important;
+
+  color:#222!important;
+
+  font-family:Arial,Helvetica,sans-serif!important;
+
+  overflow:hidden!important;
+
+  transform:
+    scale(var(--bb-invoice-scale))
+    !important;
+
+  transform-origin:
+    top left
+    !important;
+
+  box-shadow:none!important;
+}
+
+
+/* Reset invoice internals to the original desktop style */
+
+#detailModal
+.bb-history-preview-stage
+.history-final-invoice *{
+  box-sizing:border-box!important;
+}
+
+
+/* header */
+
+#detailModal
+.bb-history-preview-stage
+.history-final-header{
+  display:flex!important;
+
+  justify-content:space-between!important;
+
+  align-items:flex-start!important;
+
+  gap:25px!important;
+
+  min-height:70px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-company{
+  font-size:14px!important;
+
+  line-height:1.15!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-company-name{
+  margin-bottom:2px!important;
+
+  color:#174a91!important;
+
+  font-size:25px!important;
+
+  font-weight:800!important;
+
+  letter-spacing:1.2px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-company-tagline{
+  color:#56657a!important;
+
+  font-size:11px!important;
+
+  font-weight:500!important;
+
+  letter-spacing:.8px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-header-message{
+  padding-top:5px!important;
+
+  text-align:right!important;
+
+  color:#2867b2!important;
+
+  font-size:11px!important;
+
+  line-height:1.35!important;
+}
+
+
+/* invoice title */
+
+#detailModal
+.bb-history-preview-stage
+.history-final-title-line{
+  margin:10px 0 16px!important;
+
+  border-top:2px solid #222!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-title{
+  margin:0 0 18px!important;
+
+  text-align:center!important;
+
+  color:#2867b2!important;
+
+  font-size:31px!important;
+
+  font-weight:800!important;
+}
+
+
+/* bill / shipping / invoice meta */
+
+#detailModal
+.bb-history-preview-stage
+.history-final-bill-row{
+  display:grid!important;
+
+  grid-template-columns:
+    minmax(0,1fr)
+    minmax(0,1fr)
+    205px
+    !important;
+
+  gap:20px!important;
+
+  min-height:105px!important;
+
+  margin-bottom:18px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-bill,
+
+#detailModal
+.bb-history-preview-stage
+.history-final-shipping{
+  min-width:0!important;
+
+  font-size:13px!important;
+
+  line-height:1.5!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-shipping{
+  padding-left:20px!important;
+
+  border-left:1px solid #9eacc0!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-bill-label,
+
+#detailModal
+.bb-history-preview-stage
+.history-final-shipping-label{
+  margin-bottom:10px!important;
+
+  font-size:14px!important;
+
+  font-weight:800!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-bill-detail-row{
+  display:grid!important;
+
+  grid-template-columns:
+    112px
+    10px
+    minmax(0,1fr)
+    !important;
+
+  gap:4px!important;
+
+  align-items:start!important;
+
+  margin-bottom:7px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-bill-detail-label{
+  font-weight:700!important;
+
+  white-space:nowrap!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-shipping-value{
+  white-space:pre-line!important;
+
+  overflow-wrap:anywhere!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-meta{
+  min-width:0!important;
+
+  text-align:right!important;
+
+  color:#2867b2!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-meta-no{
+  font-size:23px!important;
+
+  font-weight:800!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-meta-date{
+  margin-top:5px!important;
+
+  font-size:14px!important;
+
+  font-weight:700!important;
+}
+
+
+/* =========================================================
+   ORIGINAL PRODUCT TABLE
+   ========================================================= */
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table{
+
+  display:table!important;
+
+  width:100%!important;
+
+  min-width:0!important;
+  max-width:100%!important;
+
+  border-collapse:collapse!important;
+
+  table-layout:fixed!important;
+
+  font-size:13px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table thead{
+  display:table-header-group!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table tbody{
+  display:table-row-group!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table tr{
+  display:table-row!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table th{
+  display:table-cell!important;
+
+  padding:7px 8px!important;
+
+  border:1px solid #6f88aa!important;
+
+  background:#4472b9!important;
+
+  color:#fff!important;
+
+  text-align:left!important;
+
+  font-size:13px!important;
+
+  font-weight:800!important;
+
+  white-space:normal!important;
+
+  vertical-align:middle!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table td{
+  display:table-cell!important;
+
+  height:42px!important;
+
+  padding:8px!important;
+
+  border:1px solid #999!important;
+
+  background:#fff!important;
+
+  color:#222!important;
+
+  font-size:13px!important;
+
+  font-weight:400!important;
+
+  white-space:normal!important;
+
+  vertical-align:top!important;
+
+  overflow-wrap:anywhere!important;
+}
+
+
+/* table column widths */
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table th:nth-child(1){
+  width:7%!important;
+
+  text-align:center!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table th:nth-child(2){
+  width:48%!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table th:nth-child(3){
+  width:11%!important;
+
+  text-align:center!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table th:nth-child(4){
+  width:17%!important;
+
+  text-align:center!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table th:nth-child(5){
+  width:17%!important;
+
+  text-align:center!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table td:first-child{
+  text-align:center!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table td:nth-child(3),
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table td:nth-child(4),
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table td:nth-child(5){
+  text-align:center!important;
+
+  white-space:nowrap!important;
+}
+
+
+/* =========================================================
+   PRODUCT NAME — NORMAL FONT
+   USER REQUEST
+   ========================================================= */
+
+#detailModal
+.bb-history-preview-stage
+.history-final-desc{
+  font-weight:400!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table td:nth-child(2) strong,
+
+#detailModal
+.bb-history-preview-stage
+.history-final-table td:nth-child(2) b{
+  font-weight:400!important;
+}
+
+
+/* smaller secondary product info */
+
+#detailModal
+.bb-history-preview-stage
+.history-final-unit{
+  display:block!important;
+
+  margin-top:4px!important;
+
+  color:#555!important;
+
+  font-size:11px!important;
+
+  font-weight:400!important;
+
+  font-style:italic!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-barcode,
+
+#detailModal
+.bb-history-preview-stage
+.history-final-product-note{
+  display:block!important;
+
+  margin-top:3px!important;
+
+  color:#555!important;
+
+  font-size:10.5px!important;
+
+  font-weight:400!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-product-note{
+  font-style:italic!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-qty-unit{
+  font-weight:400!important;
+
+  white-space:nowrap!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-unit-small{
+  margin-left:1px!important;
+
+  font-size:7px!important;
+
+  font-weight:400!important;
+}
+
+
+/* =========================================================
+   NOTES + TOTALS
+   ========================================================= */
+
+#detailModal
+.bb-history-preview-stage
+.history-final-bottom-grid{
+  display:grid!important;
+
+  grid-template-columns:
+    minmax(0,1fr)
+    minmax(260px,330px)
+    !important;
+
+  gap:28px!important;
+
+  align-items:start!important;
+
+  margin-top:14px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-notes{
+  min-height:78px!important;
+
+  padding-top:6px!important;
+
+  border-top:1px solid #9aa8b8!important;
+
+  font-size:12px!important;
+
+  line-height:1.65!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-notes-title{
+  margin-bottom:4px!important;
+
+  font-weight:800!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-note-line{
+  min-height:18px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-summary{
+  width:100%!important;
+
+  font-size:13px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-summary-row{
+  display:flex!important;
+
+  justify-content:space-between!important;
+
+  gap:15px!important;
+
+  padding:5px 8px!important;
+
+  border-bottom:1px solid #bfc7d1!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-summary-row.grand{
+  border-bottom:0!important;
+
+  background:#4472b9!important;
+
+  color:#fff!important;
+
+  font-size:15px!important;
+
+  font-weight:800!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-summary-row.credit{
+  color:#c56b00!important;
+
+  font-weight:700!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-summary-label{
+  font-weight:700!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-summary-value{
+  text-align:right!important;
+
+  white-space:nowrap!important;
+}
+
+
+/* =========================================================
+   PAYMENT / BANK / SIGNATURE
+   ========================================================= */
+
+#detailModal
+.bb-history-preview-stage
+.history-final-payment-box{
+  width:48%!important;
+
+  min-height:66px!important;
+
+  margin-top:14px!important;
+
+  padding:10px 12px!important;
+
+  border:1px solid #999!important;
+
+  font-size:12px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-transaction-label{
+  margin-bottom:7px!important;
+
+  font-weight:800!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-bank{
+  min-height:54px!important;
+
+  margin-top:12px!important;
+
+  padding:9px 12px!important;
+
+  border:1px solid #999!important;
+
+  font-size:12px!important;
+
+  line-height:1.5!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-bank-title{
+  margin-bottom:3px!important;
+
+  font-weight:800!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-signature-grid{
+  display:grid!important;
+
+  grid-template-columns:
+    minmax(0,1fr)
+    minmax(0,1fr)
+    !important;
+
+  gap:42px!important;
+
+  margin-top:28px!important;
+
+  padding-top:4px!important;
+
+  font-size:12px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-signature-column{
+  min-width:0!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-signature-name-row{
+  display:grid!important;
+
+  grid-template-columns:
+    auto
+    minmax(0,1fr)
+    !important;
+
+  gap:14px!important;
+
+  align-items:end!important;
+
+  min-height:24px!important;
+
+  padding-bottom:6px!important;
+
+  border-bottom:1px solid #777!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-signature-label{
+  font-weight:800!important;
+
+  white-space:nowrap!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-signature-value{
+  min-width:0!important;
+
+  overflow-wrap:anywhere!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-signature-line{
+  margin-top:14px!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-signature-line-title{
+  margin-bottom:7px!important;
+
+  font-weight:800!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-signature-blank{
+  height:30px!important;
+
+  border-bottom:1px solid #777!important;
+}
+
+#detailModal
+.bb-history-preview-stage
+.history-final-footer-space{
+  height:8px!important;
+}
+
+
+/* =========================================================
+   ACTION BUTTONS
+   ========================================================= */
+
+#detailModal .history-invoice-actions{
+  position:sticky!important;
+
+  bottom:0!important;
+
+  z-index:30!important;
+
+  display:grid!important;
+
+  grid-template-columns:
+    repeat(3,minmax(0,1fr))
+    !important;
+
+  gap:5px!important;
+
+  padding:
+    7px
+    6px
+    calc(8px + env(safe-area-inset-bottom))
+    !important;
+
+  border-top:1px solid #d7e0ea!important;
+
+  background:rgba(238,242,247,.98)!important;
+
+  backdrop-filter:blur(8px)!important;
+}
+
+#detailModal .history-action-btn{
+  min-height:42px!important;
+
+  padding:5px 3px!important;
+
+  border-radius:9px!important;
+
+  font-size:8px!important;
+
+  line-height:1.15!important;
+
+  white-space:normal!important;
+}
+
+
+/* =========================================================
+   SMALLER PHONES
+   ========================================================= */
+
+@media(max-width:390px){
+
+  .main{
+    padding:6px 6px 16px!important;
+  }
+
+  .filter-grid{
+    gap:6px!important;
+  }
+
+  .field input,
+  .field select{
+    height:38px!important;
+
+    font-size:10px!important;
+  }
+
+  #invoiceBody > tr{
+    padding:8px!important;
+
+    column-gap:5px!important;
+
+    row-gap:5px!important;
+  }
+
+  #invoiceBody > tr > td:nth-child(1) .invoice-link,
+  #invoiceBody > tr > td:nth-child(3){
+    font-size:12px!important;
+  }
+
+  #invoiceBody > tr > td:nth-child(8),
+  #invoiceBody > tr > td:nth-child(9),
+  #invoiceBody > tr > td:nth-child(10){
+    padding:6px 5px!important;
+
+    font-size:9.5px!important;
+  }
+
+  #detailModal .history-action-btn{
+    font-size:7.2px!important;
+  }
+}
+
 `;
 
+
+/* =========================================================
+   ADD MOBILE CSS
+   ========================================================= */
+
 function addMobileStyle(doc){
-  let style=doc.getElementById('bb-mobile-invoices-skin');
-  if(!style){style=doc.createElement('style');style.id='bb-mobile-invoices-skin';doc.head.appendChild(style)}
-  style.textContent=MOBILE_CSS;
-}
-function enhanceFilters(doc){
-  const filters=doc.querySelector('.filters');
-  const summary=doc.querySelector('.summary');
-  if(!filters||!summary)return;
-  let backdrop=doc.getElementById('bbInvoiceFilterBackdrop');
-  if(!backdrop){backdrop=doc.createElement('div');backdrop.id='bbInvoiceFilterBackdrop';backdrop.className='bb-invoice-filter-backdrop';doc.body.appendChild(backdrop)}
-  if(!filters.querySelector('.bb-mobile-filter-head')){
-    const head=doc.createElement('div');
-    head.className='bb-mobile-filter-head';
-    head.innerHTML='<div><strong>Filter Invoices</strong><span>Invoice, customer, location, date and type</span></div><button type="button" class="bb-mobile-filter-close" aria-label="Close filters">×</button>';
-    filters.insertBefore(head,filters.firstChild);
+
+  let style =
+    doc.getElementById(
+      'bb-mobile-invoices-skin'
+    );
+
+  if(!style){
+
+    style =
+      doc.createElement('style');
+
+    style.id =
+      'bb-mobile-invoices-skin';
+
+    doc.head.appendChild(style);
   }
-  let trigger=doc.getElementById('bbMobileInvoiceFilterTrigger');
+
+  style.textContent =
+    MOBILE_CSS;
+}
+
+
+/* =========================================================
+   FILTER BOTTOM SHEET
+   ========================================================= */
+
+function enhanceFilters(doc){
+
+  const filters =
+    doc.querySelector('.filters');
+
+  const summary =
+    doc.querySelector('.summary');
+
+  if(!filters || !summary){
+    return;
+  }
+
+
+  let backdrop =
+    doc.getElementById(
+      'bbInvoiceFilterBackdrop'
+    );
+
+  if(!backdrop){
+
+    backdrop =
+      doc.createElement('div');
+
+    backdrop.id =
+      'bbInvoiceFilterBackdrop';
+
+    backdrop.className =
+      'bb-invoice-filter-backdrop';
+
+    doc.body.appendChild(backdrop);
+  }
+
+
+  if(
+    !filters.querySelector(
+      '.bb-mobile-filter-head'
+    )
+  ){
+
+    const head =
+      doc.createElement('div');
+
+    head.className =
+      'bb-mobile-filter-head';
+
+    head.innerHTML = `
+      <div>
+        <strong>Filter Invoices</strong>
+        <span>
+          Invoice, customer, location,
+          date and type
+        </span>
+      </div>
+
+      <button
+        type="button"
+        class="bb-mobile-filter-close"
+        aria-label="Close filters">
+        ×
+      </button>
+    `;
+
+    filters.insertBefore(
+      head,
+      filters.firstChild
+    );
+  }
+
+
+  let trigger =
+    doc.getElementById(
+      'bbMobileInvoiceFilterTrigger'
+    );
+
   if(!trigger){
-    trigger=doc.createElement('button');
-    trigger.type='button';trigger.id='bbMobileInvoiceFilterTrigger';trigger.className='bb-mobile-filter-trigger';trigger.innerHTML='☷ <span>Filters</span>';
+
+    trigger =
+      doc.createElement('button');
+
+    trigger.type =
+      'button';
+
+    trigger.id =
+      'bbMobileInvoiceFilterTrigger';
+
+    trigger.className =
+      'bb-mobile-filter-trigger';
+
+    trigger.innerHTML =
+      '☷ <span>Filters</span>';
+
     summary.appendChild(trigger);
   }
-  const open=()=>{filters.classList.add('bb-mobile-open');backdrop.classList.add('show')};
-  const close=()=>{filters.classList.remove('bb-mobile-open');backdrop.classList.remove('show')};
-  trigger.onclick=open;backdrop.onclick=close;
-  const closeBtn=filters.querySelector('.bb-mobile-filter-close');if(closeBtn)closeBtn.onclick=close;
-  [...filters.querySelectorAll('.filter-grid > .btn')].forEach(btn=>{
-    if(btn.dataset.bbMobileCloseBound)return;btn.dataset.bbMobileCloseBound='1';btn.addEventListener('click',()=>setTimeout(close,60));
+
+
+  const open = () => {
+
+    filters.classList.add(
+      'bb-mobile-open'
+    );
+
+    backdrop.classList.add(
+      'show'
+    );
+  };
+
+
+  const close = () => {
+
+    filters.classList.remove(
+      'bb-mobile-open'
+    );
+
+    backdrop.classList.remove(
+      'show'
+    );
+  };
+
+
+  trigger.onclick =
+    open;
+
+  backdrop.onclick =
+    close;
+
+
+  const closeBtn =
+    filters.querySelector(
+      '.bb-mobile-filter-close'
+    );
+
+  if(closeBtn){
+    closeBtn.onclick = close;
+  }
+
+
+  [
+    ...filters.querySelectorAll(
+      '.filter-grid > .btn'
+    )
+  ].forEach(btn => {
+
+    if(
+      btn.dataset
+        .bbMobileCloseBound
+    ){
+      return;
+    }
+
+    btn.dataset
+      .bbMobileCloseBound = '1';
+
+    btn.addEventListener(
+      'click',
+      () => {
+        setTimeout(
+          close,
+          80
+        );
+      }
+    );
   });
 }
+
+
+/* =========================================================
+   MOBILE INVOICE CARDS
+   ========================================================= */
+
 function polishRows(doc){
-  const body=doc.getElementById('invoiceBody');if(!body)return;
-  body.querySelectorAll(':scope > tr').forEach(tr=>{
-    tr.classList.toggle('bb-empty-row',!!tr.querySelector('td.empty'));
-    const cells=tr.children;if(cells.length<12)return;
-    const action=cells[11].querySelector('.action-menu-btn');
-    const link=cells[0].querySelector('.invoice-link');
-    if(action&&link&&!action.dataset.bbMobileDirect){
-      action.dataset.bbMobileDirect='1';action.textContent='View ›';action.removeAttribute('onclick');
-      action.onclick=e=>{e.preventDefault();e.stopPropagation();link.click()};
-    }
-  });
+
+  const body =
+    doc.getElementById(
+      'invoiceBody'
+    );
+
+  if(!body){
+    return;
+  }
+
+
+  body
+    .querySelectorAll(
+      ':scope > tr'
+    )
+    .forEach(tr => {
+
+      tr.classList.toggle(
+        'bb-empty-row',
+        !!tr.querySelector(
+          'td.empty'
+        )
+      );
+
+
+      const cells =
+        tr.children;
+
+      if(cells.length < 12){
+        return;
+      }
+
+
+      const action =
+        cells[11]
+          .querySelector(
+            '.action-menu-btn'
+          );
+
+      const link =
+        cells[0]
+          .querySelector(
+            '.invoice-link'
+          );
+
+
+      if(
+        action &&
+        link &&
+        !action.dataset.bbMobileDirect
+      ){
+
+        action.dataset
+          .bbMobileDirect = '1';
+
+        action.textContent =
+          'View ›';
+
+        action.removeAttribute(
+          'onclick'
+        );
+
+        action.onclick =
+          event => {
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            link.click();
+          };
+      }
+    });
 }
+
+
+/* =========================================================
+   FIT ORIGINAL INVOICE TO PHONE
+   ========================================================= */
+
+function fitInvoicePreview(doc){
+
+  const modal =
+    doc.getElementById(
+      'detailModal'
+    );
+
+  if(
+    !modal ||
+    !modal.classList.contains('show')
+  ){
+    return;
+  }
+
+
+  const wrap =
+    modal.querySelector(
+      '.history-invoice-wrap'
+    );
+
+  const invoice =
+    modal.querySelector(
+      '.history-final-invoice'
+    );
+
+  if(!wrap || !invoice){
+    return;
+  }
+
+
+  let stage =
+    wrap.querySelector(
+      '.bb-history-preview-stage'
+    );
+
+
+  if(!stage){
+
+    stage =
+      doc.createElement('div');
+
+    stage.className =
+      'bb-history-preview-stage';
+
+    invoice.parentNode
+      .insertBefore(
+        stage,
+        invoice
+      );
+
+    stage.appendChild(invoice);
+
+  }else if(
+    invoice.parentNode !== stage
+  ){
+
+    stage.appendChild(invoice);
+  }
+
+
+  const BASE_WIDTH = 794;
+
+
+  const availableWidth =
+    Math.max(
+      260,
+      wrap.clientWidth
+    );
+
+
+  const scale =
+    Math.min(
+      1,
+      availableWidth / BASE_WIDTH
+    );
+
+
+  stage.style.setProperty(
+    '--bb-invoice-scale',
+    String(scale)
+  );
+
+
+  /*
+   * offsetHeight is the original
+   * unscaled 794px invoice height.
+   */
+  const naturalHeight =
+    Math.max(
+      invoice.offsetHeight,
+      invoice.scrollHeight,
+      1
+    );
+
+
+  stage.style.height =
+    Math.ceil(
+      naturalHeight * scale
+    ) + 'px';
+
+
+  stage.style.width =
+    Math.ceil(
+      BASE_WIDTH * scale
+    ) + 'px';
+
+
+  stage.style.marginLeft =
+    'auto';
+
+  stage.style.marginRight =
+    'auto';
+}
+
+
+/* =========================================================
+   WATCH INVOICE PREVIEW
+   ========================================================= */
+
 function watchDetail(doc){
-  const modal=doc.getElementById('detailModal');if(!modal||modal.dataset.bbMobileWatch)return;
-  modal.dataset.bbMobileWatch='1';
-  new MutationObserver(()=>{
-    if(modal.classList.contains('show')){
-      const content=doc.getElementById('detailContent');if(content)setTimeout(()=>content.scrollTo({top:0,behavior:'auto'}),30);
-    }
-  }).observe(modal,{attributes:true,attributeFilter:['class']});
+
+  const modal =
+    doc.getElementById(
+      'detailModal'
+    );
+
+  if(
+    !modal ||
+    modal.dataset.bbMobileWatch
+  ){
+    return;
+  }
+
+
+  modal.dataset
+    .bbMobileWatch = '1';
+
+
+  const childWindow =
+    frame.contentWindow;
+
+
+  let fitTimer = null;
+
+
+  const runFit = () => {
+
+    clearTimeout(fitTimer);
+
+    fitTimer =
+      setTimeout(
+        () => {
+
+          childWindow
+            .requestAnimationFrame(
+              () => {
+
+                fitInvoicePreview(doc);
+
+                const content =
+                  doc.getElementById(
+                    'detailContent'
+                  );
+
+                if(content){
+                  content.scrollTop = 0;
+                }
+              }
+            );
+
+        },
+        45
+      );
+  };
+
+
+  /*
+   * Modal open / close
+   */
+  new childWindow
+    .MutationObserver(
+      () => {
+
+        if(
+          modal.classList
+            .contains('show')
+        ){
+
+          runFit();
+
+          setTimeout(
+            () =>
+              fitInvoicePreview(doc),
+            180
+          );
+
+          setTimeout(
+            () =>
+              fitInvoicePreview(doc),
+            500
+          );
+        }
+      }
+    )
+    .observe(
+      modal,
+      {
+        attributes:true,
+        attributeFilter:[
+          'class'
+        ]
+      }
+    );
+
+
+  /*
+   * Invoice HTML gets rebuilt
+   * after invoice detail loads.
+   */
+  const printArea =
+    doc.getElementById(
+      'historyInvoicePrintArea'
+    );
+
+  if(printArea){
+
+    new childWindow
+      .MutationObserver(
+        () => {
+
+          if(
+            modal.classList
+              .contains('show')
+          ){
+
+            runFit();
+
+            setTimeout(
+              () =>
+                fitInvoicePreview(doc),
+              120
+            );
+          }
+        }
+      )
+      .observe(
+        printArea,
+        {
+          childList:true,
+          subtree:true
+        }
+      );
+  }
+
+
+  /*
+   * Detail loading state change
+   */
+  const detailContent =
+    doc.getElementById(
+      'detailContent'
+    );
+
+  if(detailContent){
+
+    new childWindow
+      .MutationObserver(
+        runFit
+      )
+      .observe(
+        detailContent,
+        {
+          attributes:true,
+          childList:true,
+          subtree:true
+        }
+      );
+  }
+
+
+  childWindow
+    .addEventListener(
+      'resize',
+      () => {
+
+        fitInvoicePreview(doc);
+      }
+    );
 }
-function enhance(doc){
-  if(!doc||!doc.head||!doc.body)return;
-  addMobileStyle(doc);enhanceFilters(doc);polishRows(doc);watchDetail(doc);
-  const body=doc.getElementById('invoiceBody');
-  if(body&&!body.dataset.bbMobileWatch){body.dataset.bbMobileWatch='1';new MutationObserver(()=>requestAnimationFrame(()=>polishRows(doc))).observe(body,{childList:true,subtree:true})}
-  boot.classList.add('hide');
+
+
+/* =========================================================
+   WATCH INVOICE LIST
+   ========================================================= */
+
+function observeRows(doc){
+
+  const body =
+    doc.getElementById(
+      'invoiceBody'
+    );
+
+  if(
+    !body ||
+    body.dataset.bbMobileObserved
+  ){
+    return;
+  }
+
+
+  body.dataset
+    .bbMobileObserved = '1';
+
+
+  new frame.contentWindow
+    .MutationObserver(
+      () => {
+
+        frame.contentWindow
+          .requestAnimationFrame(
+            () => {
+
+              polishRows(doc);
+            }
+          );
+      }
+    )
+    .observe(
+      body,
+      {
+        childList:true,
+        subtree:true
+      }
+    );
 }
+
+
+/* =========================================================
+   INJECT MOBILE SKIN
+   ========================================================= */
+
 function inject(){
-  let doc;try{doc=frame.contentDocument||frame.contentWindow.document}catch(_){return}
-  if(!doc)return;enhance(doc);
+
+  let doc;
+
+  try{
+
+    doc =
+      frame.contentDocument ||
+      frame.contentWindow.document;
+
+  }catch(error){
+
+    return;
+  }
+
+
+  if(
+    !doc ||
+    !doc.head ||
+    !doc.body
+  ){
+    return;
+  }
+
+
+  addMobileStyle(doc);
+
+  enhanceFilters(doc);
+
+  polishRows(doc);
+
+  observeRows(doc);
+
+  watchDetail(doc);
+
+
+  setTimeout(
+    () => {
+
+      polishRows(doc);
+
+      fitInvoicePreview(doc);
+
+    },
+    120
+  );
+
+
+  setTimeout(
+    () => {
+
+      polishRows(doc);
+
+      fitInvoicePreview(doc);
+
+    },
+    600
+  );
+
+
+  boot.classList.add(
+    'hide'
+  );
 }
-frame.addEventListener('load',()=>{setTimeout(inject,90);setTimeout(inject,500);setTimeout(inject,1400)});
+
+
+/* =========================================================
+   LOAD
+   ========================================================= */
+
+frame.addEventListener(
+  'load',
+  () => {
+
+    setTimeout(
+      inject,
+      80
+    );
+
+    setTimeout(
+      inject,
+      450
+    );
+
+    setTimeout(
+      inject,
+      1200
+    );
+  }
+);
+
 })();
 </script>
+
 </body>
 </html>
