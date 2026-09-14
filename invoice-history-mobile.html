@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f7fb">
+<title>BIG BROTHER — Invoice History Mobile</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif}
+#historyMobileFrame{display:none;width:100%;height:100%;border:0;background:#f4f7fb}
+#boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;background:#f4f7fb;color:#17457a;z-index:10}
+#bootCard{width:min(330px,100%);padding:20px;border:1px solid #dbe5ef;border-radius:15px;background:#fff;box-shadow:0 10px 30px rgba(23,63,119,.08);text-align:center;font-size:13px;font-weight:900}
+#bootSub{margin-top:6px;color:#718197;font-size:10px;font-weight:600;line-height:1.4}
+</style>
+</head>
+<body>
+<div id="boot"><div id="bootCard">Loading Invoice History…<div id="bootSub">Checking BIG BROTHER permission</div></div></div>
+<iframe id="historyMobileFrame" title="BIG BROTHER Invoice History Mobile" src="about:blank"></iframe>
+<script>
+(async function(){
+'use strict';
+
+const SUPABASE_URL='https://sjfhlaclgmkwwofzstok.supabase.co';
+const SUPABASE_KEY='sb_publishable_w762jR65CWwlO30fKQsYOw_6L9grx8S';
+const SESSION_KEY='BB_SUPABASE_DEV_SESSION_V1';
+const boot=document.getElementById('boot');
+const bootCard=document.getElementById('bootCard');
+const frame=document.getElementById('historyMobileFrame');
+
+function readSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null')}catch(_){return null}}
+function saveSession(s){try{if(!s){localStorage.removeItem(SESSION_KEY);return}if(!s.expires_at&&s.expires_in)s.expires_at=Math.floor(Date.now()/1000)+Number(s.expires_in);localStorage.setItem(SESSION_KEY,JSON.stringify(s))}catch(_){}}
+async function parse(r){const t=await r.text();let d={};try{d=t?JSON.parse(t):{}}catch(_){d={message:t}}if(!r.ok)throw new Error(d.message||d.error_description||d.error||('Request failed ('+r.status+')'));return d}
+async function ensureSession(){let s=readSession();if(!s?.access_token)throw new Error('Please sign in to BIG BROTHER first.');if(s.expires_at&&Number(s.expires_at)<Math.floor(Date.now()/1000)+45){if(!s.refresh_token)throw new Error('Your BIG BROTHER session has expired.');const r=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:s.refresh_token}),cache:'no-store'});s=await parse(r);saveSession(s)}return s}
+async function rpc(fn,args={}){let s=await ensureSession();const call=token=>fetch(SUPABASE_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(args||{}),cache:'no-store'});let r=await call(s.access_token);if(r.status===401){s=await ensureSession();r=await call(s.access_token)}return parse(r)}
+function key(v){return String(v||'').trim().toLowerCase()}
+
+async function assertHistoryPermission(){
+  const profile=await rpc('bb_current_access_profile');
+  if(profile?.user?.isAdmin===true)return;
+  const modules=Array.isArray(profile?.modules)?profile.modules:[];
+  const grant=modules.find(x=>key(x.moduleKey)==='*')||modules.find(x=>key(x.moduleKey)==='route.history');
+  if(!grant||grant.canView!==true)throw new Error('You do not have permission to view Invoice History.');
+}
+
+function showError(message){
+  bootCard.innerHTML='Could not open Invoice History<div id="bootSub">'+String(message||'Unknown error').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))+'</div>';
+}
+
+function attachFullHistorySource(){
+  let innerDoc;
+  try{innerDoc=frame.contentDocument||frame.contentWindow.document}catch(_){return}
+  if(!innerDoc)return;
+  const invoiceFrame=innerDoc.getElementById('invoiceFrame');
+  if(!invoiceFrame)return;
+
+  const fullUrl='index.html?embed=1&mobileSkin=1&allLocations=1&v=20260914-1';
+  if(!String(invoiceFrame.getAttribute('src')||'').includes('index.html')){
+    invoiceFrame.src=fullUrl;
+  }
+
+  const reveal=()=>{
+    frame.style.display='block';
+    boot.style.display='none';
+  };
+
+  invoiceFrame.addEventListener('load',()=>setTimeout(reveal,180),{once:true});
+  setTimeout(reveal,1800);
+}
+
+try{
+  await assertHistoryPermission();
+  document.getElementById('bootSub').textContent='All locations · Full invoice history';
+  frame.addEventListener('load',()=>setTimeout(attachFullHistorySource,30));
+  frame.src='your-invoices-mobile.html?historyMode=all&v=20260914-4';
+}catch(error){
+  console.error('Invoice History Mobile:',error);
+  showError(error?.message||error);
+}
+})();
+</script>
+</body>
+</html>
