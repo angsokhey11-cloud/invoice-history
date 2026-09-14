@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BIG BROTHER — Invoice History All Locations</title>
+<style>html,body{margin:0;min-height:100%;background:#eef3f8;font-family:Arial,sans-serif}.bb-loader{min-height:100vh;display:flex;align-items:center;justify-content:center}.bb-card{background:#fff;border:1px solid #d9e2ef;border-radius:14px;padding:22px 28px;box-shadow:0 8px 30px #173a6615;color:#17457a;font-weight:800}.bb-sub{margin-top:6px;color:#6b7280;font-size:12px;font-weight:600}</style>
+</head>
+<body>
+<div class="bb-loader"><div class="bb-card">Loading BIG BROTHER Invoice History…<div class="bb-sub">All locations · permission controlled</div></div></div>
+<script>
+(async function(){
+  try{
+    const r=await fetch('legacy-google-v4.6.3.html?v=20260914-1',{cache:'no-store'});
+    if(!r.ok)throw new Error('Could not load Invoice History source.');
+    let html=await r.text();
+
+    const adapter='<scr'+'ipt src="supabase-history-all-adapter.js?v=20260914-1"></scr'+'ipt>';
+    const headClose=html.toLowerCase().indexOf('</head>');
+    if(headClose<0)throw new Error('Invoice History source is missing </head>.');
+    html=html.slice(0,headClose)+adapter+'\n'+html.slice(headClose);
+
+    const marker='(async function initializeInvoiceHistory() {';
+    const replacement=`
+      fetchApi = window.BBHistoryAllAdapter.fetchApi;
+      historyJsonp = window.BBHistoryAllAdapter.historyJsonp;
+      postHistoryAction = window.BBHistoryAllAdapter.postHistoryAction;
+      requireHistoryPrimaryAdmin = window.BBHistoryAllAdapter.requirePrimaryAdmin;
+      ${marker}`;
+    if(!html.includes(marker))throw new Error('Invoice History initialization marker was not found.');
+    html=html.replace(marker,replacement);
+
+    html=html.replaceAll('Sales Database','BIG BROTHER Database');
+    html=html.replace('<title>BIG BROTHER — Invoice History Workspace</title>','<title>BIG BROTHER — Invoice History</title>');
+
+    document.open();document.write(html);document.close();
+  }catch(error){
+    console.error(error);
+    document.body.innerHTML='<div class="bb-loader"><div class="bb-card">Could not open Invoice History<div class="bb-sub">'+String(error?.message||error)+'</div></div></div>';
+  }
+})();
+</script>
+</body></html>
