@@ -53,8 +53,8 @@ function attachFullHistorySource(){
   const invoiceFrame=innerDoc.getElementById('invoiceFrame');
   if(!invoiceFrame)return;
 
-  const fullUrl='index.html?embed=1&mobileSkin=1&allLocations=1&v=20260914-1';
-  if(!String(invoiceFrame.getAttribute('src')||'').includes('index.html')){
+  const fullUrl='invoice-history-all.html?embed=1&mobileSkin=1&allLocations=1&v=20260914-1';
+  if(!String(invoiceFrame.getAttribute('src')||'').includes('invoice-history-all.html')){
     invoiceFrame.src=fullUrl;
   }
 
