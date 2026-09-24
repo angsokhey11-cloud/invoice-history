@@ -2017,8 +2017,77 @@
   }
 
   function buildEditPayload(){
-    const totals=recalcEditInvoice();const items=(currentEditInvoice.items||[]).map((item,index)=>{const tr=document.querySelector(`#editItemsBody tr[data-edit-index="${index}"]`);const qty=Math.max(0,numberValue(tr?.querySelector(".edit-item-qty")?.value));const price=Math.max(0,numberValue(tr?.querySelector(".edit-item-price")?.value));return {lineId:item.lineId||"",productCode:item.productCode,productName:item.productName||item.productCode||"",productBarcode:item.productBarcode||item.barcode||"",productNote:item.productNote||"",unit:item.unit||"",qty,unitPrice:price,amount:qty*price};}).filter(x=>x.qty>0);
-    return {adminCode:historyPrimaryAdminCode,invoiceId:currentEditInvoice.invoiceId,invoiceNo:currentEditInvoice.invoiceNo,invoiceDate:$("editInvoiceDate").value,customer:$("editCustomer").value.trim(),locationCode:$("editLocationCode").value,salesperson:$("editSalesperson").value.trim(),paymentMethod:$("editPaymentMethod").value,currency:$("editCurrency").value,exchangeRate:numberValue($("editExchangeRate").value),subtotal:totals.subtotal,discount:totals.discount,grandTotal:totals.grandTotal,amountPaid:totals.amountPaid,outstanding:totals.outstanding,dueDate:$("editDueDate").value,bankPayment:$("editBankPayment").value.trim(),bankReference:$("editBankReference").value.trim(),batchNumber:$("editBatchNumber").value.trim(),note:$("editNote").value.trim(),items};
+    const totals=recalcEditInvoice();
+
+    const items=(currentEditInvoice.items||[])
+      .map((item,index)=>{
+        const tr=document.querySelector(
+          `#editItemsBody tr[data-edit-index="${index}"]`
+        );
+        const qty=Math.max(
+          0,
+          numberValue(
+            tr?.querySelector(".edit-item-qty")?.value
+          )
+        );
+        const price=Math.max(
+          0,
+          numberValue(
+            tr?.querySelector(".edit-item-price")?.value
+          )
+        );
+
+        return {
+          lineId:item.lineId||"",
+          entryType:item.entryType||"EXACT",
+          productCode:item.exactProductCode||item.productCode||"",
+          productGroupCode:item.productGroupCode||"",
+          productName:item.productName||item.productCode||"",
+          productBarcode:item.productBarcode||item.barcode||"",
+          productNote:item.productNote||"",
+          unit:item.unit||"",
+          qty,
+          unitPrice:price,
+          amount:qty*price,
+          stockAllocation:item.stockAllocation||null
+        };
+      })
+      .filter(x=>x.qty>0);
+
+    const customerId=syncEditCustomerSelection();
+    const salesperson=$("editSalesperson").value.trim();
+    const sameSalesperson=
+      salesperson.toLowerCase()===
+      String(currentEditInvoice?.salesperson||"").trim().toLowerCase();
+
+    return {
+      adminCode:historyPrimaryAdminCode,
+      invoiceId:currentEditInvoice.invoiceId,
+      originalInvoiceNo:currentEditOriginalInvoiceNo,
+      invoiceNo:$("editInvoiceNo").value.trim(),
+      invoiceDate:$("editInvoiceDate").value,
+      customerId,
+      customer:$("editCustomer").value.trim(),
+      locationCode:$("editLocationCode").value,
+      salespersonStaffId:sameSalesperson
+        ? String(currentEditInvoice?.salespersonStaffId||"").trim()
+        : "",
+      salesperson,
+      paymentMethod:$("editPaymentMethod").value,
+      currency:$("editCurrency").value,
+      exchangeRate:numberValue($("editExchangeRate").value),
+      subtotal:totals.subtotal,
+      discount:totals.discount,
+      grandTotal:totals.grandTotal,
+      amountPaid:totals.amountPaid,
+      outstanding:totals.outstanding,
+      dueDate:$("editDueDate").value,
+      bankPayment:$("editBankPayment").value.trim(),
+      bankReference:$("editBankReference").value.trim(),
+      batchNumber:$("editBatchNumber").value.trim(),
+      note:$("editNote").value.trim(),
+      items
+    };
   }
 
   function postHistoryAction(action,fieldName,payload){
@@ -2028,7 +2097,107 @@
   async function saveEditedInvoice(){
     if(!currentEditInvoice)return;
     if(!(await requireHistoryPrimaryAdmin()))return;
-    const payload=buildEditPayload();if(!payload.customer||!payload.locationCode||!payload.salesperson||!payload.invoiceDate||!payload.items.length){alert("Invoice Date, Customer, Location, Salesperson and at least one item are required.");return;}if(!confirm("Save changes to "+payload.invoiceNo+"?\n\nThis will update the Sales Database."))return;const btn=$("editSaveBtn");const old=btn.innerHTML;btn.disabled=true;btn.innerHTML="⏳ Saving...";try{await postHistoryAction("updateInvoice","invoiceData",payload);removeHistoryDetailCache(payload.invoiceNo);closeEditInvoice();await loadInvoices();alert("Invoice "+payload.invoiceNo+" update request was sent to Sales Database.");}catch(error){alert("Could not update invoice.\n\n"+(error.message||"Please try again."));}finally{btn.disabled=false;btn.innerHTML=old;}
+
+    const payload=buildEditPayload();
+
+    if(
+      !payload.invoiceNo||
+      !payload.customer||
+      !payload.customerId||
+      !payload.locationCode||
+      !payload.salesperson||
+      !payload.invoiceDate||
+      !payload.items.length
+    ){
+      alert(
+        !payload.customerId
+          ? "Please select one exact Customer from the Customer list."
+          : "Invoice No., Invoice Date, Customer, Location, Salesperson and at least one item are required."
+      );
+      return;
+    }
+
+    const qtyChanged=(currentEditInvoice.items||[]).some((item,index)=>{
+      const tr=document.querySelector(
+        `#editItemsBody tr[data-edit-index="${index}"]`
+      );
+      const nextQty=Math.max(
+        0,
+        numberValue(tr?.querySelector(".edit-item-qty")?.value)
+      );
+      return Math.abs(nextQty-numberValue(item.qty))>0.000001;
+    });
+
+    const invoiceChanged=
+      payload.invoiceNo!==currentEditOriginalInvoiceNo;
+
+    const customerChanged=
+      payload.customerId!==String(currentEditInvoice.customerId||"").trim();
+
+    const warning=[
+      "SAVE LINKED INVOICE CORRECTION",
+      "",
+      "Invoice: "+currentEditOriginalInvoiceNo+
+        (invoiceChanged?" → "+payload.invoiceNo:""),
+      "Customer: "+String(currentEditInvoice.customer||"")+
+        (customerChanged?" → "+payload.customer:""),
+      qtyChanged
+        ? "Stock: rebuild this invoice's original sale using the corrected QTY."
+        : "Stock: no QTY rebuild needed.",
+      "",
+      "The internal Invoice ID stays the same.",
+      "Linked AR / Payment / Stock / History references will be synchronized.",
+      "",
+      "Save this correction?"
+    ].join("\n");
+
+    if(!confirm(warning))return;
+
+    const btn=$("editSaveBtn");
+    const old=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML="⏳ Saving linked correction...";
+
+    try{
+      const result=await postHistoryAction(
+        "updateInvoice",
+        "invoiceData",
+        payload
+      );
+
+      const savedNo=String(result?.invoiceNo||payload.invoiceNo).trim();
+
+      removeHistoryDetailCache(
+        currentEditOriginalInvoiceNo,
+        currentEditInvoice.invoiceId
+      );
+      removeHistoryDetailCache(
+        savedNo,
+        currentEditInvoice.invoiceId
+      );
+
+      currentEditOriginalInvoiceNo=savedNo;
+      closeEditInvoice();
+
+      await loadInvoices();
+
+      alert(
+        "Invoice correction saved.\n\n"+
+        "Invoice No.: "+savedNo+
+        (result?.stockRebuilt
+          ?"\n✓ Stock was rebuilt from the corrected QTY."
+          :"\n✓ Stock QTY was unchanged.")+
+        "\n✓ Customer / AR / Payment / linked history references synchronized."
+      );
+    }catch(error){
+      alert(
+        "Could not save the invoice correction.\n\n"+
+        (error.message||"Please try again.")
+      );
+    }finally{
+      btn.disabled=false;
+      btn.innerHTML=old;
+    }
   }
 
   async function deleteInvoiceFromHistory(invoiceNo){
@@ -2038,7 +2207,7 @@
     try{await postHistoryAction("deleteInvoice","deleteData",{invoiceNo,adminCode:historyPrimaryAdminCode});await loadInvoices();alert("Delete request for "+invoiceNo+" was sent to Sales Database.");}catch(error){alert("Could not delete invoice.\n\n"+(error.message||"Please try again."));}
   }
 
-  function closeEditInvoice(){$("editModal").classList.remove("show");currentEditInvoice=null;}
+  function closeEditInvoice(){$("editModal").classList.remove("show");currentEditInvoice=null;currentEditOriginalInvoiceNo="";}
   function editModalBackdrop(event){if(event.target===$("editModal"))closeEditInvoice();}
 
   function closeDetail() {
