@@ -1302,7 +1302,7 @@
         <td class="money">${money(invoice.amountPaid, "")}</td>
         <td class="money">${money(invoice.outstanding, "")}</td>
         <td><span class="badge ${badgeClass}">${escapeHtml(badgeText)}</span></td>
-        <td><span class="reversal-remark ${remarkClass}">${escapeHtml(remarkText)}</span></td>
+        <td class="reversal-cell ${remarkClass}"><span class="reversal-remark ${remarkClass}">${escapeHtml(remarkText)}</span></td>
         <td class="action-cell">
           <button class="action-menu-btn" type="button" aria-label="Invoice actions" onclick='toggleRowActions(event,this,${jsNo})'>⋮</button>
         </td>
