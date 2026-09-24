@@ -1770,24 +1770,32 @@
     menu.style.top="-9999px";
   }
 
-  function toggleRowActions(event,button,invoiceNo){
+  function toggleRowActions(event,button,invoiceNo,invoiceId){
     event.preventDefault();
     event.stopPropagation();
 
     const menu=document.getElementById("floatingActionMenu");
     if(!menu||!button)return;
 
-    const sameOpen=menu.classList.contains("show") && menu.dataset.invoiceNo===String(invoiceNo||"");
+    const stableId=String(invoiceId||"");
+    const sameOpen=
+      menu.classList.contains("show")
+      && menu.dataset.invoiceId===stableId;
+
     closeRowActions();
     if(sameOpen)return;
 
     const jsNo=JSON.stringify(String(invoiceNo||""));
+    const jsId=JSON.stringify(stableId);
+
     menu.dataset.invoiceNo=String(invoiceNo||"");
+    menu.dataset.invoiceId=stableId;
+
     menu.innerHTML=`
-      <button type="button" role="menuitem" onclick='closeRowActions(); openDetail(${jsNo});'>👁 <span>View</span></button>
-      <button type="button" role="menuitem" class="edit" onclick='closeRowActions(); adminEditInvoice(${jsNo});'>🔒✏️ <span>Edit — Admin 1</span></button>
-      <button type="button" role="menuitem" class="print" onclick='closeRowActions(); printInvoiceFromRow(${jsNo});'>🖨 <span>Print</span></button>
-      <button type="button" role="menuitem" class="danger" onclick='closeRowActions(); adminDeleteInvoice(${jsNo});'>🔒🗑 <span>Delete — Admin 1</span></button>`;
+      <button type="button" role="menuitem" onclick='closeRowActions(); openDetail(${jsNo},${jsId});'>👁 <span>View</span></button>
+      <button type="button" role="menuitem" class="edit" onclick='closeRowActions(); adminEditInvoice(${jsNo},${jsId});'>🔒✏️ <span>Edit — Admin</span></button>
+      <button type="button" role="menuitem" class="print" onclick='closeRowActions(); printInvoiceFromRow(${jsNo},${jsId});'>🖨 <span>Print</span></button>
+      <button type="button" role="menuitem" class="danger" onclick='closeRowActions(); adminDeleteInvoice(${jsNo});'>🔒🗑 <span>Delete — Admin</span></button>`;
 
     menu.classList.add("show");
     menu.setAttribute("aria-hidden","false");
@@ -1824,28 +1832,178 @@
   window.addEventListener("resize",closeRowActions);
   window.addEventListener("scroll",closeRowActions,true);
 
-  async function getHistoryInvoice(invoiceNo){
-    const data=await fetchApi({action:"invoiceDetail",invoiceNo});
-    if(!data.invoice) throw new Error("Invoice detail was not returned.");
+  async function getHistoryInvoice(invoiceNo,invoiceId){
+    const data=await fetchApi({
+      action:"invoiceDetail",
+      invoiceNo,
+      invoiceId:String(invoiceId||"").trim()
+    });
+    if(!data.invoice)throw new Error("Invoice detail was not returned.");
     await enrichHistoryInvoiceFromMaster(data.invoice);
     return data.invoice;
   }
 
-  async function printInvoiceFromRow(invoiceNo){
-    try{const invoice=await getHistoryInvoice(invoiceNo);currentHistoryInvoice=invoice;const old=$("historyInvoicePrintArea").innerHTML;$("historyInvoicePrintArea").innerHTML=buildHistoryInvoiceHtml(invoice);printHistoryInvoice();$("historyInvoicePrintArea").innerHTML=old;}
-    catch(error){showError(error.message||"Unable to print invoice.");}
+  async function printInvoiceFromRow(invoiceNo,invoiceId){
+    try{
+      const invoice=await getHistoryInvoice(invoiceNo,invoiceId);
+      currentHistoryInvoice=invoice;
+      const old=$("historyInvoicePrintArea").innerHTML;
+      $("historyInvoicePrintArea").innerHTML=buildHistoryInvoiceHtml(invoice);
+      printHistoryInvoice();
+      $("historyInvoicePrintArea").innerHTML=old;
+    }catch(error){
+      showError(error.message||"Unable to print invoice.");
+    }
   }
 
   let currentEditInvoice=null;
-  async function openEditInvoice(invoiceNo){
-    hideError();$("editModal").classList.add("show");$("editTitle").textContent="Edit Invoice "+invoiceNo;$("editLoading").style.display="block";$("editLoading").textContent="Loading invoice...";$("editContent").style.display="none";
-    try{const invoice=await getHistoryInvoice(invoiceNo);currentEditInvoice=invoice;populateEditInvoice(invoice);await populateEditLocationSelect(invoice.locationCode||"");$("editLoading").style.display="none";$("editContent").style.display="block";}
-    catch(error){$("editLoading").textContent=error.message||"Unable to load invoice.";}
+  let currentEditOriginalInvoiceNo="";
+
+  function editCustomerRows(){
+    return Array.isArray(historyMasterCustomers)
+      ? historyMasterCustomers
+      : [];
   }
 
-  function isoDateOnly(value){const m=String(value||"").match(/^(\d{4}-\d{2}-\d{2})/);return m?m[1]:"";}
+  function resolveEditCustomerId(){
+    const input=$("editCustomer");
+    const wanted=String(input?.value||"").trim().toLowerCase();
+    const location=String($("editLocationCode")?.value||"").trim().toLowerCase();
+    if(!wanted)return "";
+
+    const matches=editCustomerRows().filter(row=>
+      String(row?.name||row?.customer||"").trim().toLowerCase()===wanted
+    );
+
+    if(!matches.length)return "";
+
+    if(location){
+      const sameLocation=matches.filter(row=>
+        String(
+          row?.locationCode||
+          row?.location||
+          row?.location_code||
+          ""
+        ).trim().toLowerCase()===location
+      );
+      if(sameLocation.length===1){
+        return String(
+          sameLocation[0]?.customerId||
+          sameLocation[0]?.id||
+          ""
+        ).trim();
+      }
+    }
+
+    if(matches.length===1){
+      return String(
+        matches[0]?.customerId||
+        matches[0]?.id||
+        ""
+      ).trim();
+    }
+
+    const currentId=String(currentEditInvoice?.customerId||"").trim();
+    const currentMatch=matches.find(row=>
+      String(row?.customerId||row?.id||"").trim()===currentId
+    );
+    return currentMatch?currentId:"";
+  }
+
+  function syncEditCustomerSelection(){
+    const input=$("editCustomer");
+    if(!input)return "";
+    const id=resolveEditCustomerId();
+    input.dataset.customerId=id;
+    return id;
+  }
+
+  async function populateEditCustomerOptions(invoice){
+    const input=$("editCustomer");
+    const list=$("editCustomerOptions");
+    if(!input||!list)return;
+
+    try{
+      const rows=await getHistoryMasterCustomers();
+
+      list.innerHTML=rows
+        .filter(row=>String(row?.name||row?.customer||"").trim())
+        .map(row=>{
+          const name=String(row?.name||row?.customer||"").trim();
+          const id=String(row?.customerId||row?.id||"").trim();
+          const location=String(
+            row?.locationCode||
+            row?.location||
+            row?.location_code||
+            ""
+          ).trim();
+          const label=[id,location].filter(Boolean).join(" · ");
+          return `<option value="${escapeHtml(name)}" label="${escapeHtml(label)}"></option>`;
+        })
+        .join("");
+
+      input.dataset.customerId=String(invoice?.customerId||"").trim();
+      syncEditCustomerSelection();
+    }catch(error){
+      console.warn("Could not load Customer choices for Invoice edit:",error);
+      input.dataset.customerId=String(invoice?.customerId||"").trim();
+    }
+  }
+
+  async function openEditInvoice(invoiceNo,invoiceId){
+    hideError();
+    $("editModal").classList.add("show");
+    $("editTitle").textContent="Edit Invoice "+invoiceNo;
+    $("editLoading").style.display="block";
+    $("editLoading").textContent="Loading invoice...";
+    $("editContent").style.display="none";
+
+    try{
+      const invoice=await getHistoryInvoice(invoiceNo,invoiceId);
+      currentEditInvoice=invoice;
+      currentEditOriginalInvoiceNo=String(invoice.invoiceNo||"").trim();
+
+      populateEditInvoice(invoice);
+
+      await Promise.all([
+        populateEditLocationSelect(invoice.locationCode||""),
+        populateEditCustomerOptions(invoice)
+      ]);
+
+      const batchLocked=!!String(invoice.batchId||invoice.batchNumber||"").trim();
+      $("editLocationCode").disabled=batchLocked;
+      $("editSalesperson").readOnly=batchLocked;
+      $("editBatchNumber").readOnly=true;
+
+      $("editLoading").style.display="none";
+      $("editContent").style.display="block";
+    }catch(error){
+      $("editLoading").textContent=error.message||"Unable to load invoice.";
+    }
+  }
+
+  function isoDateOnly(value){
+    const m=String(value||"").match(/^(\d{4}-\d{2}-\d{2})/);
+    return m?m[1]:"";
+  }
+
   function populateEditInvoice(invoice){
-    $("editInvoiceNo").value=invoice.invoiceNo||"";$("editInvoiceDate").value=isoDateOnly(invoice.invoiceDate);$("editCustomer").value=invoice.customer||"";$("editSalesperson").value=invoice.salesperson||"";$("editPaymentMethod").value=invoice.paymentMethod||"Cash";$("editCurrency").value=invoice.currency||"USD";$("editExchangeRate").value=numberValue(invoice.exchangeRate)||4060;$("editDiscount").value=numberValue(invoice.discount);$("editAmountPaid").value=numberValue(invoice.amountPaid);$("editDueDate").value=isoDateOnly(invoice.dueDate);$("editBankPayment").value=invoice.bankPayment||"";$("editBankReference").value=invoice.bankReference||"";$("editBatchNumber").value=invoice.batchNumber||"";$("editNote").value=invoice.note||"";
+    $("editInvoiceNo").value=invoice.invoiceNo||"";
+    $("editInvoiceDate").value=isoDateOnly(invoice.invoiceDate);
+    $("editCustomer").value=invoice.customer||"";
+    $("editCustomer").dataset.customerId=invoice.customerId||"";
+    $("editSalesperson").value=invoice.salesperson||"";
+    $("editPaymentMethod").value=invoice.paymentMethod||"Cash";
+    $("editCurrency").value=invoice.currency||"USD";
+    $("editExchangeRate").value=numberValue(invoice.exchangeRate)||4060;
+    $("editDiscount").value=numberValue(invoice.discount);
+    $("editAmountPaid").value=numberValue(invoice.amountPaid);
+    $("editDueDate").value=isoDateOnly(invoice.dueDate);
+    $("editBankPayment").value=invoice.bankPayment||"";
+    $("editBankReference").value=invoice.bankReference||"";
+    $("editBatchNumber").value=invoice.batchNumber||invoice.batchId||"";
+    $("editNote").value=invoice.note||"";
+
     const items=Array.isArray(invoice.items)?invoice.items:[];
     $("editItemsBody").innerHTML=items.map((item,index)=>`<tr data-edit-index="${index}"><td>${escapeHtml(item.productCode||"")}</td><td><strong>${escapeHtml(item.productName||item.productCode||"")}</strong>${item.productBarcode||item.barcode?`<br><small>Barcode: ${escapeHtml(item.productBarcode||item.barcode)}</small>`:""}${item.productNote?`<br><small>Note: ${escapeHtml(item.productNote)}</small>`:""}${item.unit?`<br><small>Unit: ${escapeHtml(item.unit)}</small>`:""}</td><td><input class="edit-item-qty" type="number" min="0" step="0.01" value="${numberValue(item.qty)}" oninput="recalcEditInvoice()"></td><td><input class="edit-item-price" type="number" min="0" step="0.01" value="${numberValue(item.price)}" oninput="recalcEditInvoice()"></td><td class="money edit-item-total">0.00</td></tr>`).join("");
     recalcEditInvoice();
