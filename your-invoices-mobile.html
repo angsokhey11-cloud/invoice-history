@@ -385,6 +385,7 @@ body{
   grid-template-areas:
     "invoice status action"
     "customer customer customer"
+    "remark remark remark"
     "date location salesperson"
     "payment currency currency"
     "grand paid outstanding"
@@ -716,9 +717,35 @@ body{
 }
 
 
-/* View */
+/* Reversal Remark */
 
 #invoiceBody > tr > td:nth-child(12){
+  grid-area:remark!important;
+}
+
+#invoiceBody > tr > td.reversal-cell.none{
+  display:none!important;
+}
+
+#invoiceBody .reversal-remark{
+  padding:4px 7px!important;
+  font-size:8px!important;
+}
+
+#invoiceBody > tr.invoice-reversal-partial{
+  background:#fff4bf!important;
+  border-color:#ecd16c!important;
+}
+
+#invoiceBody > tr.invoice-reversal-full{
+  background:#ffd9d9!important;
+  border-color:#e5a0a6!important;
+}
+
+
+/* View */
+
+#invoiceBody > tr > td:nth-child(13){
   grid-area:action!important;
 
   justify-self:end!important;
