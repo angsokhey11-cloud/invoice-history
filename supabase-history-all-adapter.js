@@ -43,7 +43,7 @@
 
   const SHEET_BACKUP_ENDPOINT='https://script.google.com/macros/s/AKfycbxnlB1T6sbqdItYfyXa6wYquXN6URbJhvWJOkE_cM57wsSWK0_uFEsK_DuWr_caQVgd/exec';
   const SHEET_SYNC_QUEUE_KEY='BB_INVOICE_HISTORY_SHEET_SYNC_QUEUE_V1';
-  const SHEET_SYNC_CATCHUP_KEY='BB_INVOICE_HISTORY_SHEET_CATCHUP_20260924_1';
+  const SHEET_SYNC_CATCHUP_KEY='BB_INVOICE_HISTORY_SHEET_CATCHUP_20260924_2';
   const SHEET_SYNC_CATCHUP_IDS=[
     'BB-20260924-123109-371',
     'BB-20260924-154852-677'
@@ -87,6 +87,23 @@
       totalUSD:toUsd(invoice?.grandTotal,invoice),
       paidUSD:toUsd(invoice?.amountPaid,invoice),
       receivableUSD:toUsd(invoice?.creditAmount??invoice?.outstanding,invoice),
+
+      /* Raw transaction values for the Google Sales Database.
+         These stay in the invoice's original currency. */
+      subtotal:num(invoice?.subtotal),
+      discount:num(invoice?.discount),
+      grandTotal:num(invoice?.grandTotal),
+      amountPaid:num(invoice?.amountPaid),
+      outstanding:num(invoice?.outstanding),
+      creditAmount:num(invoice?.creditAmount??invoice?.outstanding),
+      status:clean(invoice?.status),
+      dueDate:clean(invoice?.dueDate),
+      bankPayment:clean(invoice?.bankPayment),
+      bankReference:clean(invoice?.bankReference),
+      batchNumber:clean(invoice?.batchNumber||invoice?.batchId),
+      customerId:clean(invoice?.customerId),
+      salespersonStaffId:clean(invoice?.salespersonStaffId),
+
       paymentMethod:clean(invoice?.paymentMethod),
       transactionId:clean(invoice?.bankReference),
       salesman:clean(invoice?.salesperson),
