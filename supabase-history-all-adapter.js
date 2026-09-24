@@ -78,7 +78,9 @@
         unit:clean(item?.unit),
         qty:num(item?.qty),
         unitPrice:toUsd(item?.unitPrice??item?.price,invoice),
-        amount:toUsd(item?.amount??item?.total,invoice)
+        amount:toUsd(item?.amount??item?.total,invoice),
+        rawUnitPrice:num(item?.unitPrice??item?.price),
+        rawAmount:num(item?.amount??item?.total)
       })),
       productCount:items.length,
       totalQty:items.reduce((sum,item)=>sum+num(item?.qty),0),
