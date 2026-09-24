@@ -17,7 +17,11 @@
     const action=String(params.action||'');
     if(action==='verifyInvoiceHistoryPrimaryAdmin')return rpc('bb_invoice_history_all_is_admin');
     if(action==='invoiceHistoryRevision'){const d=await rpc('bb_invoice_history_all_revision');return {success:true,revision:String(d||'0')}}
-    if(action==='invoiceDetail')return rpc('bb_invoice_history_all_detail',{p_invoice_no:String(params.invoiceNo||'')});
+    if(action==='invoiceDetail'){
+      const invoiceId=String(params.invoiceId||'').trim();
+      if(invoiceId)return rpc('bb_invoice_history_all_detail_by_id',{p_invoice_id:invoiceId});
+      return rpc('bb_invoice_history_all_detail',{p_invoice_no:String(params.invoiceNo||'')});
+    }
     if(action==='invoiceList')return rpc('bb_invoice_history_all_list',{
       p_invoice_no:String(params.invoiceNo||''),
       p_customer:String(params.customer||''),
