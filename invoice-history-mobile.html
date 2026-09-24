@@ -45,13 +45,13 @@ function showError(message){
 
 try{
   await assertHistoryPermission();
-  const templateResponse=await fetch('your-invoices-mobile.html?v=20260914-5',{cache:'no-store'});
+  const templateResponse=await fetch('your-invoices-mobile.html?v=20260924-reversal1',{cache:'no-store'});
   if(!templateResponse.ok)throw new Error('Could not load the mobile Invoice History layout.');
 
   let html=await templateResponse.text();
   html=html.replace('<title>BIG BROTHER — Your Invoices Mobile</title>','<title>BIG BROTHER — Invoice History Mobile</title>');
   html=html.replace('<div id="boot">Loading Your Invoices…</div>','<div id="boot">Loading Invoice History…</div>');
-  html=html.replace('src="your-invoices.html?embed=1&mobileSkin=1&v=20260914-3"','src="invoice-history-all.html?embed=1&mobileSkin=1&allLocations=1&v=20260914-2"');
+  html=html.replace('src="your-invoices.html?embed=1&mobileSkin=1&v=20260914-3"','src="invoice-history-all.html?embed=1&mobileSkin=1&allLocations=1&v=20260924-reversal1"');
   html=html.replace('title="Your Invoices"','title="Invoice History"');
 
   document.open();
