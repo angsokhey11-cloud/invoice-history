@@ -271,6 +271,51 @@
       background: #f8fbff;
     }
 
+    tbody tr.invoice-reversal-partial {
+      background: #fff4bf;
+    }
+
+    tbody tr.invoice-reversal-partial:hover {
+      background: #ffefaa;
+    }
+
+    tbody tr.invoice-reversal-full {
+      background: #ffd9d9;
+    }
+
+    tbody tr.invoice-reversal-full:hover {
+      background: #ffcaca;
+    }
+
+    .reversal-remark {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 10px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .reversal-remark.partial {
+      color: #7a5500;
+      background: #ffe08a;
+      border: 1px solid #efc94f;
+    }
+
+    .reversal-remark.full {
+      color: #9f1d28;
+      background: #ffc5c9;
+      border: 1px solid #e58f96;
+    }
+
+    .reversal-remark.none {
+      color: #8a96a6;
+      background: transparent;
+      padding-left: 0;
+      padding-right: 0;
+    }
+
     .invoice-link {
       color: var(--blue);
       font-weight: 800;
@@ -706,13 +751,14 @@
               <th>Paid</th>
               <th>Outstanding</th>
               <th>Status</th>
+              <th>Remark</th>
               <th style="text-align:center;width:58px;">Actions</th>
             </tr>
           </thead>
 
           <tbody id="invoiceBody">
             <tr>
-              <td colspan="12" class="empty">
+              <td colspan="13" class="empty">
                 Loading invoice history...
               </td>
             </tr>
@@ -800,7 +846,7 @@
   // Only a tiny revision token is checked every 20 seconds.
   // The full invoice list is downloaded only when that token changes.
   const HISTORY_SYNC_INTERVAL_MS = 20000;
-  const HISTORY_DEVICE_CACHE_KEY = "bb_invoice_history_device_cache_v45";
+  const HISTORY_DEVICE_CACHE_KEY = "bb_invoice_history_device_cache_v46";
   const HISTORY_DETAIL_CACHE_PREFIX = "bb_invoice_history_detail_v2_";
   const HISTORY_DETAIL_PREFETCH_LIMIT = 6;
   const HISTORY_DETAIL_PREFETCH_CONCURRENCY = 3;
@@ -1147,7 +1193,7 @@
     if (!silent) {
       $("loading").textContent = "Loading...";
       $("invoiceBody").innerHTML =
-        '<tr><td colspan="12" class="empty">Loading invoice history...</td></tr>';
+        '<tr><td colspan="13" class="empty">Loading invoice history...</td></tr>';
     }
 
     try {
@@ -1203,7 +1249,7 @@
       } else {
         showError(error.message || "Unable to load invoice history.");
         $("invoiceBody").innerHTML =
-          '<tr><td colspan="12" class="empty">Unable to load invoice history.</td></tr>';
+          '<tr><td colspan="13" class="empty">Unable to load invoice history.</td></tr>';
         $("summaryCount").textContent = "0 invoices";
       }
 
@@ -1216,16 +1262,35 @@
   function renderInvoices(invoices) {
     $("summaryCount").textContent = invoices.length + (invoices.length === 1 ? " invoice" : " invoices");
     if (!invoices.length) {
-      $("invoiceBody").innerHTML = '<tr><td colspan="12" class="empty">No invoices found.</td></tr>';
+      $("invoiceBody").innerHTML = '<tr><td colspan="13" class="empty">No invoices found.</td></tr>';
       return;
     }
     $("invoiceBody").innerHTML = invoices.map(invoice => {
       const type = String(invoice.invoiceType || "").toLowerCase();
       const badgeClass = type === "credit" ? "badge-credit" : "badge-paid";
       const badgeText = invoice.invoiceType || invoice.status || "";
+      const reversalStatus = String(invoice.reversalStatus || "").toUpperCase();
+      const reversalRemark = String(invoice.reversalRemark || "").trim();
+      const reversalClass =
+        reversalStatus === "FULL"
+          ? "invoice-reversal-full"
+          : (
+              reversalStatus === "PARTIAL"
+                ? "invoice-reversal-partial"
+                : ""
+            );
+      const remarkClass =
+        reversalStatus === "FULL"
+          ? "full"
+          : (
+              reversalStatus === "PARTIAL"
+                ? "partial"
+                : "none"
+            );
+      const remarkText = reversalRemark || "—";
       const no = escapeHtml(invoice.invoiceNo);
       const jsNo = JSON.stringify(String(invoice.invoiceNo || ""));
-      return `<tr>
+      return `<tr class="${reversalClass}">
         <td><a class="invoice-link" href="#" onclick='openDetail(${jsNo}); return false;'>${no}</a></td>
         <td>${escapeHtml(historyDate(invoice.invoiceDate))}</td>
         <td>${escapeHtml(invoice.customer || "")}</td>
@@ -1237,6 +1302,7 @@
         <td class="money">${money(invoice.amountPaid, "")}</td>
         <td class="money">${money(invoice.outstanding, "")}</td>
         <td><span class="badge ${badgeClass}">${escapeHtml(badgeText)}</span></td>
+        <td><span class="reversal-remark ${remarkClass}">${escapeHtml(remarkText)}</span></td>
         <td class="action-cell">
           <button class="action-menu-btn" type="button" aria-label="Invoice actions" onclick='toggleRowActions(event,this,${jsNo})'>⋮</button>
         </td>
