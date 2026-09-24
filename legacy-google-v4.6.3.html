@@ -799,9 +799,9 @@
     <div id="editLoading" class="loading" style="padding:22px;">Loading invoice...</div>
     <div id="editContent" class="edit-body" style="display:none;">
       <div class="edit-grid">
-        <div class="edit-field"><label>Invoice No</label><input id="editInvoiceNo" readonly></div>
+        <div class="edit-field"><label>Invoice No</label><input id="editInvoiceNo" autocomplete="off"></div>
         <div class="edit-field"><label>Invoice Date</label><input id="editInvoiceDate" type="date"></div>
-        <div class="edit-field"><label>Customer</label><input id="editCustomer"></div>
+        <div class="edit-field"><label>Customer</label><input id="editCustomer" list="editCustomerOptions" autocomplete="off" oninput="syncEditCustomerSelection()"><datalist id="editCustomerOptions"></datalist></div>
         <div class="edit-field"><label>Location Code</label><select id="editLocationCode"><option value="">Select Location</option></select></div>
         <div class="edit-field"><label>Salesperson</label><input id="editSalesperson"></div>
         <div class="edit-field"><label>Payment Method</label><select id="editPaymentMethod" onchange="recalcEditInvoice()"><option>Cash</option><option>Bank</option><option>Credit</option><option>Partially Paid in Cash</option><option>Partially Paid in Bank</option></select></div>
@@ -812,7 +812,7 @@
         <div class="edit-field"><label>Due Date</label><input id="editDueDate" type="date"></div>
         <div class="edit-field"><label>Bank Payment</label><input id="editBankPayment"></div>
         <div class="edit-field"><label>Bank Reference</label><input id="editBankReference"></div>
-        <div class="edit-field"><label>Batch Number</label><input id="editBatchNumber"></div>
+        <div class="edit-field"><label>Batch Number</label><input id="editBatchNumber" readonly title="Batch routing stays linked to the original Batch."></div>
         <div class="edit-field edit-span-2"><label>Note</label><textarea id="editNote"></textarea></div>
       </div>
       <div class="edit-items-wrap"><table class="edit-items-table"><thead><tr><th>Product Code</th><th>Description / Unit</th><th>QTY / Unit</th><th>Unit Price</th><th>Total</th></tr></thead><tbody id="editItemsBody"></tbody></table></div>
@@ -945,9 +945,9 @@
     }
   }
 
-  async function adminEditInvoice(invoiceNo) {
+  async function adminEditInvoice(invoiceNo, invoiceId) {
     if (!(await requireHistoryPrimaryAdmin())) return;
-    openEditInvoice(invoiceNo);
+    openEditInvoice(invoiceNo, invoiceId);
   }
 
   async function adminDeleteInvoice(invoiceNo) {
@@ -1001,13 +1001,16 @@
     });
   }
 
-  function historyDetailCacheKey(invoiceNo) {
-    return HISTORY_DETAIL_CACHE_PREFIX + encodeURIComponent(String(invoiceNo || "").trim());
+  function historyDetailCacheKey(invoiceNo, invoiceId) {
+    const id = String(invoiceId || "").trim();
+    const no = String(invoiceNo || "").trim();
+    const ref = id ? ("ID:" + id) : ("NO:" + no);
+    return HISTORY_DETAIL_CACHE_PREFIX + encodeURIComponent(ref);
   }
 
-  function readHistoryDetailCache(invoiceNo) {
+  function readHistoryDetailCache(invoiceNo, invoiceId) {
     try {
-      const raw = localStorage.getItem(historyDetailCacheKey(invoiceNo));
+      const raw = localStorage.getItem(historyDetailCacheKey(invoiceNo, invoiceId));
       if (!raw) return null;
 
       const parsed = JSON.parse(raw);
@@ -1019,15 +1022,16 @@
     }
   }
 
-  function saveHistoryDetailCache(invoiceNo, invoice, revision) {
+  function saveHistoryDetailCache(invoiceNo, invoice, revision, invoiceId) {
     try {
+      const stableId = String(invoiceId || invoice?.invoiceId || "").trim();
       const payload = {
         revision: String(revision || historyLastRevision || ""),
         savedAt: Date.now(),
         invoice: invoice
       };
       localStorage.setItem(
-        historyDetailCacheKey(invoiceNo),
+        historyDetailCacheKey(invoiceNo, stableId),
         JSON.stringify(payload)
       );
     } catch (error) {
@@ -1035,19 +1039,22 @@
     }
   }
 
-  function removeHistoryDetailCache(invoiceNo) {
+  function removeHistoryDetailCache(invoiceNo, invoiceId) {
     try {
-      localStorage.removeItem(historyDetailCacheKey(invoiceNo));
+      localStorage.removeItem(historyDetailCacheKey(invoiceNo, invoiceId));
+      if (invoiceNo) localStorage.removeItem(historyDetailCacheKey(invoiceNo, ""));
     } catch (_) {}
   }
 
   async function fetchAndCacheInvoiceDetail(invoiceNo, options = {}) {
     const silent = options && options.silent === true;
+    const invoiceId = String(options?.invoiceId || "").trim();
 
     try {
       const data = await fetchApi({
         action: "invoiceDetail",
-        invoiceNo: invoiceNo
+        invoiceNo: invoiceNo,
+        invoiceId: invoiceId
       });
 
       if (!data || !data.invoice) {
@@ -1055,13 +1062,18 @@
       }
 
       await enrichHistoryInvoiceFromMaster(data.invoice);
-      saveHistoryDetailCache(invoiceNo, data.invoice, historyLastRevision);
+      saveHistoryDetailCache(
+        data.invoice.invoiceNo || invoiceNo,
+        data.invoice,
+        historyLastRevision,
+        data.invoice.invoiceId || invoiceId
+      );
 
       return data.invoice;
 
     } catch (error) {
       if (!silent) throw error;
-      console.warn("Invoice detail prefetch failed:", invoiceNo, error);
+      console.warn("Invoice detail prefetch failed:", invoiceNo, invoiceId, error);
       return null;
     }
   }
@@ -1075,7 +1087,8 @@
       const no = String(invoice?.invoiceNo || "").trim();
       if (!no) return false;
 
-      const cached = readHistoryDetailCache(no);
+      const id = String(invoice?.invoiceId || "").trim();
+      const cached = readHistoryDetailCache(no, id);
       return !cached || String(cached.revision || "") !== String(historyLastRevision || "");
     });
 
@@ -1086,7 +1099,10 @@
     async function worker() {
       while (index < queue.length) {
         const current = queue[index++];
-        await fetchAndCacheInvoiceDetail(current.invoiceNo, { silent: true });
+        await fetchAndCacheInvoiceDetail(current.invoiceNo, {
+          silent: true,
+          invoiceId: current.invoiceId || ""
+        });
       }
     }
 
@@ -1290,8 +1306,9 @@
       const remarkText = reversalRemark || "—";
       const no = escapeHtml(invoice.invoiceNo);
       const jsNo = JSON.stringify(String(invoice.invoiceNo || ""));
+      const jsId = JSON.stringify(String(invoice.invoiceId || ""));
       return `<tr class="${reversalClass}">
-        <td><a class="invoice-link" href="#" onclick='openDetail(${jsNo}); return false;'>${no}</a></td>
+        <td><a class="invoice-link" href="#" onclick='openDetail(${jsNo},${jsId}); return false;'>${no}</a></td>
         <td>${escapeHtml(historyDate(invoice.invoiceDate))}</td>
         <td>${escapeHtml(invoice.customer || "")}</td>
         <td><strong>${escapeHtml(invoice.locationCode || "")}</strong></td>
@@ -1304,7 +1321,7 @@
         <td><span class="badge ${badgeClass}">${escapeHtml(badgeText)}</span></td>
         <td class="reversal-cell ${remarkClass}"><span class="reversal-remark ${remarkClass}">${escapeHtml(remarkText)}</span></td>
         <td class="action-cell">
-          <button class="action-menu-btn" type="button" aria-label="Invoice actions" onclick='toggleRowActions(event,this,${jsNo})'>⋮</button>
+          <button class="action-menu-btn" type="button" aria-label="Invoice actions" onclick='toggleRowActions(event,this,${jsNo},${jsId})'>⋮</button>
         </td>
       </tr>`;
     }).join("");
@@ -1573,7 +1590,7 @@
     return invoice;
   }
 
-  async function openDetail(invoiceNo) {
+  async function openDetail(invoiceNo, invoiceId) {
 
     hideError();
 
@@ -1582,7 +1599,7 @@
     $("detailTitle").textContent =
       "Invoice " + invoiceNo;
 
-    const cached = readHistoryDetailCache(invoiceNo);
+    const cached = readHistoryDetailCache(invoiceNo, invoiceId);
 
     /*
      * FAST PATH:
@@ -1604,7 +1621,7 @@
 
       // Database changed since this detail was cached.
       // Keep old detail visible while refreshing silently.
-      fetchAndCacheInvoiceDetail(invoiceNo, { silent: true })
+      fetchAndCacheInvoiceDetail(invoiceNo, { silent: true, invoiceId: invoiceId || "" })
         .then(invoice => {
           if (invoice && $("detailModal").classList.contains("show")) {
             renderDetail(invoice);
@@ -1625,7 +1642,7 @@
 
     try {
 
-      const invoice = await fetchAndCacheInvoiceDetail(invoiceNo);
+      const invoice = await fetchAndCacheInvoiceDetail(invoiceNo, { invoiceId: invoiceId || "" });
 
       $("detailLoading").style.display = "none";
       $("detailContent").style.display = "block";
