@@ -10,11 +10,18 @@
 <script>
 (async function(){
   try{
-    const r=await fetch('legacy-google-v4.6.3.html?v=20260914-1',{cache:'no-store'});
+    const r=await fetch('legacy-google-v4.6.3.html?v=20260925-rowpreview1',{cache:'no-store'});
     if(!r.ok)throw new Error('Could not load Your Invoices source.');
     let html=await r.text();
 
-    const adapter='<scr'+'ipt src="supabase-your-invoices-adapter.js?v=20260921-owner1"></scr'+'ipt>';
+    const mobileRoleScope=new URLSearchParams(location.search).get('mobileRoleScope')==='1';
+    const adapterFile=mobileRoleScope
+      ? 'supabase-history-mobile-adapter.js?v=20260925-assigned1'
+      : 'supabase-your-invoices-adapter.js?v=20260921-owner1';
+    const adapterObject=mobileRoleScope
+      ? 'BBHistoryMobileAdapter'
+      : 'BBYourInvoicesAdapter';
+    const adapter='<scr'+'ipt src="'+adapterFile+'"></scr'+'ipt>';
     const privacyStyle='<style>.floating-action-menu .edit,.floating-action-menu .danger{display:none!important}</style>';
     const headClose=html.toLowerCase().indexOf('</head>');
     if(headClose<0)throw new Error('Your Invoices source is missing </head>.');
@@ -22,10 +29,10 @@
 
     const marker='(async function initializeInvoiceHistory() {';
     const replacement=`
-      fetchApi = window.BBYourInvoicesAdapter.fetchApi;
-      historyJsonp = window.BBYourInvoicesAdapter.historyJsonp;
-      postHistoryAction = window.BBYourInvoicesAdapter.postHistoryAction;
-      requireHistoryPrimaryAdmin = window.BBYourInvoicesAdapter.requirePrimaryAdmin;
+      fetchApi = window[${JSON.stringify(adapterObject)}].fetchApi;
+      historyJsonp = window[${JSON.stringify(adapterObject)}].historyJsonp;
+      postHistoryAction = window[${JSON.stringify(adapterObject)}].postHistoryAction;
+      requireHistoryPrimaryAdmin = window[${JSON.stringify(adapterObject)}].requirePrimaryAdmin;
       ${marker}`;
     if(!html.includes(marker))throw new Error('Your Invoices initialization marker was not found.');
     html=html.replace(marker,replacement);
