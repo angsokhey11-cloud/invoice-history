@@ -327,6 +327,15 @@
       text-decoration: underline;
     }
 
+    tbody tr.bb-invoice-row {
+      cursor: pointer;
+    }
+
+    tbody tr.bb-invoice-row:focus-within {
+      outline: 2px solid rgba(47,126,234,.22);
+      outline-offset: -2px;
+    }
+
     .money {
       text-align: right;
       font-variant-numeric: tabular-nums;
@@ -1307,8 +1316,8 @@
       const no = escapeHtml(invoice.invoiceNo);
       const jsNo = JSON.stringify(String(invoice.invoiceNo || ""));
       const jsId = JSON.stringify(String(invoice.invoiceId || ""));
-      return `<tr class="${reversalClass}">
-        <td><a class="invoice-link" href="#" onclick='openDetail(${jsNo},${jsId}); return false;'>${no}</a></td>
+      return `<tr class="${reversalClass} bb-invoice-row" onclick='if(!event.target.closest(".action-cell")){openDetail(${jsNo},${jsId});}'>
+        <td><a class="invoice-link" href="#" onclick='event.stopPropagation(); openDetail(${jsNo},${jsId}); return false;'>${no}</a></td>
         <td>${escapeHtml(historyDate(invoice.invoiceDate))}</td>
         <td>${escapeHtml(invoice.customer || "")}</td>
         <td><strong>${escapeHtml(invoice.locationCode || "")}</strong></td>
