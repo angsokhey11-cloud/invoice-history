@@ -51,7 +51,10 @@ try{
   let html=await templateResponse.text();
   html=html.replace('<title>BIG BROTHER — Your Invoices Mobile</title>','<title>BIG BROTHER — Invoice History Mobile</title>');
   html=html.replace('<div id="boot">Loading Your Invoices…</div>','<div id="boot">Loading Invoice History…</div>');
-  html=html.replace('src="your-invoices.html?embed=1&mobileSkin=1&v=20260914-3"','src="invoice-history-all.html?embed=1&mobileSkin=1&mobileScope=1&v=20260925-assigned1"');
+  html=html.replace(
+    /src="your-invoices\.html\?[^"]*"/,
+    'src="invoice-history-all.html?embed=1&mobileSkin=1&mobileScope=1&v=20260925-assigned2"'
+  );
   html=html.replace('title="Your Invoices"','title="Invoice History"');
 
   document.open();
