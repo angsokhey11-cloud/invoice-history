@@ -45,7 +45,7 @@ function showError(message){
 
 try{
   await assertHistoryPermission();
-  const templateResponse=await fetch('your-invoices-mobile.html?v=20260925-rowpreview1',{cache:'no-store'});
+  const templateResponse=await fetch('your-invoices-mobile.html?v=20260925-assigned2',{cache:'no-store'});
   if(!templateResponse.ok)throw new Error('Could not load the mobile Invoice History layout.');
 
   let html=await templateResponse.text();
