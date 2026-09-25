@@ -231,5 +231,7 @@
   }
 
   window.BBHistoryMobileAdapter={rpc,fetchApi,historyJsonp,postHistoryAction,requirePrimaryAdmin,ensureSession,syncInvoiceIdToSheet,retrySheetQueue,catchUpPriorCorrections};
-  setTimeout(()=>{retrySheetQueue().catch(()=>{});catchUpPriorCorrections().catch(()=>{});},1200);
+  if(!READ_ONLY){
+    setTimeout(()=>{retrySheetQueue().catch(()=>{});catchUpPriorCorrections().catch(()=>{});},1200);
+  }
 })();
