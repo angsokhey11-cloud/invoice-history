@@ -813,11 +813,14 @@
         <div class="edit-field"><label>Customer</label><input id="editCustomer" list="editCustomerOptions" autocomplete="off" oninput="syncEditCustomerSelection()"><datalist id="editCustomerOptions"></datalist></div>
         <div class="edit-field"><label>Location Code</label><select id="editLocationCode"><option value="">Select Location</option></select></div>
         <div class="edit-field"><label>Salesperson</label><input id="editSalesperson"></div>
-        <div class="edit-field"><label>Payment Method</label><select id="editPaymentMethod" onchange="recalcEditInvoice()"><option>Cash</option><option>Bank</option><option>Cash + Bank</option><option>Credit</option><option>Partially Paid in Cash</option><option>Partially Paid in Bank</option></select></div>
+        <div class="edit-field"><label>Payment Method</label><select id="editPaymentMethod" onchange="handleEditPaymentMethodChange()"><option>Cash</option><option>Bank</option><option>Cash + Bank</option><option>Credit</option><option>Partially Paid in Cash</option><option>Partially Paid in Bank</option></select></div>
         <div class="edit-field"><label>Currency</label><select id="editCurrency" onchange="recalcEditInvoice()"><option>USD</option><option>KHR</option></select></div>
         <div class="edit-field"><label>Exchange Rate</label><input id="editExchangeRate" type="number" step="0.01"></div>
         <div class="edit-field"><label>Discount</label><input id="editDiscount" type="number" min="0" step="0.01" oninput="recalcEditInvoice()"></div>
         <div class="edit-field"><label>Amount Paid</label><input id="editAmountPaid" type="number" min="0" step="0.01" oninput="recalcEditInvoice()"></div>
+        <div class="edit-field" id="editSplitCashRow" style="display:none;"><label>Cash Amount</label><input id="editSplitCashAmount" type="number" min="0" step="0.01" inputmode="decimal" oninput="syncEditSplitFrom('cash')"></div>
+        <div class="edit-field" id="editSplitBankRow" style="display:none;"><label>Bank Amount</label><input id="editSplitBankAmount" type="number" min="0" step="0.01" inputmode="decimal" oninput="syncEditSplitFrom('bank')"></div>
+        <div class="edit-field edit-span-2" id="editSplitHelpRow" style="display:none;"><div id="editSplitHelp" style="font-size:12px;font-weight:800;color:#667085;padding:8px 10px;background:#f5f8fc;border:1px solid #d9e2ef;border-radius:8px;">Cash + Bank must equal Grand Total.</div></div>
         <div class="edit-field"><label>Due Date</label><input id="editDueDate" type="date"></div>
         <div class="edit-field"><label>Bank Payment</label><input id="editBankPayment"></div>
         <div class="edit-field"><label>Bank Reference</label><input id="editBankReference"></div>
@@ -2010,6 +2013,26 @@
     $("editDueDate").value=isoDateOnly(invoice.dueDate);
     $("editBankPayment").value=invoice.bankPayment||"";
     $("editBankReference").value=invoice.bankReference||"";
+
+    const originalInvoicePayments=(Array.isArray(invoice.payments)?invoice.payments:[])
+      .filter(p=>String(p?.paymentSource||"").trim().toLowerCase()==="invoice");
+    const existingSplitCash=originalInvoicePayments
+      .filter(p=>String(p?.paymentMethod||"").trim().toLowerCase()==="cash")
+      .reduce((sum,p)=>sum+numberValue(p?.amount),0);
+    const existingSplitBank=originalInvoicePayments
+      .filter(p=>String(p?.paymentMethod||"").trim().toLowerCase()==="bank")
+      .reduce((sum,p)=>sum+numberValue(p?.amount),0);
+
+    $("editSplitCashAmount").value=
+      String(invoice.paymentMethod||"").trim()==="Cash + Bank" && existingSplitCash>0
+        ? existingSplitCash.toFixed(2)
+        : "";
+    $("editSplitBankAmount").value=
+      String(invoice.paymentMethod||"").trim()==="Cash + Bank" && existingSplitBank>0
+        ? existingSplitBank.toFixed(2)
+        : "";
+    $("editPaymentMethod").dataset.previousMethod=invoice.paymentMethod||"Cash";
+
     $("editBatchNumber").value=invoice.batchNumber||invoice.batchId||"";
     $("editNote").value=invoice.note||"";
 
@@ -2018,10 +2041,111 @@
     recalcEditInvoice();
   }
 
+  function editSplitTolerance(){
+    return String($("editCurrency")?.value||"USD").toUpperCase()==="KHR"?0.5:0.005;
+  }
+
+  function updateEditSplitStatus(grand){
+    const method=String($("editPaymentMethod")?.value||"");
+    const split=method==="Cash + Bank";
+    const cashRow=$("editSplitCashRow");
+    const bankRow=$("editSplitBankRow");
+    const helpRow=$("editSplitHelpRow");
+    if(cashRow)cashRow.style.display=split?"":"none";
+    if(bankRow)bankRow.style.display=split?"":"none";
+    if(helpRow)helpRow.style.display=split?"":"none";
+
+    const paid=$("editAmountPaid");
+    if(paid)paid.readOnly=split;
+
+    if(!split)return;
+
+    const cash=Math.max(0,numberValue($("editSplitCashAmount")?.value));
+    const bank=Math.max(0,numberValue($("editSplitBankAmount")?.value));
+    const diff=grand-(cash+bank);
+    const help=$("editSplitHelp");
+    if(!help)return;
+
+    if(cash<=0||bank<=0){
+      help.textContent="Enter both Cash Amount and Bank Amount. Cash + Bank must equal Grand Total.";
+      help.style.color="#b66a00";
+    }else if(Math.abs(diff)<=editSplitTolerance()){
+      help.textContent="✓ Cash + Bank matches Grand Total.";
+      help.style.color="#18864b";
+    }else{
+      help.textContent=(diff>0?"Remaining: ":"Over: ")+Math.abs(diff).toFixed(2);
+      help.style.color="#c62828";
+    }
+  }
+
+  function handleEditPaymentMethodChange(){
+    const select=$("editPaymentMethod");
+    if(!select)return;
+    const previous=String(select.dataset.previousMethod||currentEditInvoice?.paymentMethod||"");
+    const next=String(select.value||"");
+    const grand=Math.max(0,numberValue($("editGrandTotal")?.textContent));
+
+    if(next==="Cash + Bank"&&previous!=="Cash + Bank"){
+      if(previous==="Bank"||previous==="Partially Paid in Bank"){
+        $("editSplitCashAmount").value="";
+        $("editSplitBankAmount").value=grand.toFixed(2);
+      }else{
+        $("editSplitCashAmount").value=grand.toFixed(2);
+        $("editSplitBankAmount").value="";
+      }
+    }
+
+    select.dataset.previousMethod=next;
+    recalcEditInvoice();
+  }
+
+  function syncEditSplitFrom(source){
+    if(String($("editPaymentMethod")?.value||"")!=="Cash + Bank")return;
+    const grand=Math.max(0,numberValue($("editGrandTotal")?.textContent));
+    const cashInput=$("editSplitCashAmount");
+    const bankInput=$("editSplitBankAmount");
+
+    if(source==="cash"){
+      const cash=Math.max(0,numberValue(cashInput?.value));
+      if(bankInput)bankInput.value=Math.max(0,grand-cash).toFixed(2);
+    }else{
+      const bank=Math.max(0,numberValue(bankInput?.value));
+      if(cashInput)cashInput.value=Math.max(0,grand-bank).toFixed(2);
+    }
+    recalcEditInvoice();
+  }
+
   function recalcEditInvoice(){
-    if(!currentEditInvoice)return;let subtotal=0;
-    document.querySelectorAll("#editItemsBody tr").forEach((tr,index)=>{const qty=Math.max(0,numberValue(tr.querySelector(".edit-item-qty")?.value));const price=Math.max(0,numberValue(tr.querySelector(".edit-item-price")?.value));const total=qty*price;subtotal+=total;const cell=tr.querySelector(".edit-item-total");if(cell)cell.textContent=total.toFixed(2);});
-    const discount=Math.min(subtotal,Math.max(0,numberValue($("editDiscount").value)));const grand=Math.max(0,subtotal-discount);const method=$("editPaymentMethod").value;let paid=Math.max(0,numberValue($("editAmountPaid").value));if(method==="Cash"||method==="Bank"||method==="Cash + Bank")paid=grand;else if(method==="Credit")paid=0;else paid=Math.min(paid,grand);$("editAmountPaid").value=paid.toFixed(2);const outstanding=Math.max(0,grand-paid);$("editSubtotal").textContent=subtotal.toFixed(2);$("editDiscountDisplay").textContent=discount.toFixed(2);$("editGrandTotal").textContent=grand.toFixed(2);$("editPaidDisplay").textContent=paid.toFixed(2);$("editOutstanding").textContent=outstanding.toFixed(2);
+    if(!currentEditInvoice)return;
+    let subtotal=0;
+
+    document.querySelectorAll("#editItemsBody tr").forEach(tr=>{
+      const qty=Math.max(0,numberValue(tr.querySelector(".edit-item-qty")?.value));
+      const price=Math.max(0,numberValue(tr.querySelector(".edit-item-price")?.value));
+      const total=qty*price;
+      subtotal+=total;
+      const cell=tr.querySelector(".edit-item-total");
+      if(cell)cell.textContent=total.toFixed(2);
+    });
+
+    const discount=Math.min(subtotal,Math.max(0,numberValue($("editDiscount").value)));
+    const grand=Math.max(0,subtotal-discount);
+    const method=$("editPaymentMethod").value;
+    let paid=Math.max(0,numberValue($("editAmountPaid").value));
+
+    if(method==="Cash"||method==="Bank"||method==="Cash + Bank")paid=grand;
+    else if(method==="Credit")paid=0;
+    else paid=Math.min(paid,grand);
+
+    $("editAmountPaid").value=paid.toFixed(2);
+    const outstanding=Math.max(0,grand-paid);
+    $("editSubtotal").textContent=subtotal.toFixed(2);
+    $("editDiscountDisplay").textContent=discount.toFixed(2);
+    $("editGrandTotal").textContent=grand.toFixed(2);
+    $("editPaidDisplay").textContent=paid.toFixed(2);
+    $("editOutstanding").textContent=outstanding.toFixed(2);
+
+    updateEditSplitStatus(grand);
     return {subtotal,discount,grandTotal:grand,amountPaid:paid,outstanding};
   }
 
@@ -2083,6 +2207,9 @@
         : "",
       salesperson,
       paymentMethod:$("editPaymentMethod").value,
+      originalPaymentMethod:String(currentEditInvoice?.paymentMethod||""),
+      splitCashAmount:numberValue($("editSplitCashAmount")?.value),
+      splitBankAmount:numberValue($("editSplitBankAmount")?.value),
       currency:$("editCurrency").value,
       exchangeRate:numberValue($("editExchangeRate").value),
       subtotal:totals.subtotal,
@@ -2126,6 +2253,40 @@
       return;
     }
 
+    if(payload.paymentMethod==="Cash + Bank"){
+      const tolerance=payload.currency==="KHR"?0.5:0.005;
+      if(payload.splitCashAmount<=0){
+        alert("Please enter the Cash Amount for Cash + Bank.");
+        return;
+      }
+      if(payload.splitBankAmount<=0){
+        alert("Please enter the Bank Amount for Cash + Bank.");
+        return;
+      }
+      if(Math.abs((payload.splitCashAmount+payload.splitBankAmount)-payload.grandTotal)>tolerance){
+        alert(
+          "Cash Amount + Bank Amount must equal Grand Total.\n\n"+
+          "Grand Total: "+payload.grandTotal+"\n"+
+          "Cash: "+payload.splitCashAmount+"\n"+
+          "Bank: "+payload.splitBankAmount
+        );
+        return;
+      }
+      if(!payload.bankPayment){
+        alert("Please enter/select the Bank Payment for the Bank portion.");
+        return;
+      }
+      if(!payload.bankReference){
+        alert("Please enter the Bank Reference / Transaction ID for the Bank portion.");
+        return;
+      }
+    }
+
+    if(payload.paymentMethod==="Bank"&&(!payload.bankPayment||!payload.bankReference)){
+      alert("Bank Payment and Bank Reference / Transaction ID are required for Bank payment.");
+      return;
+    }
+
     const qtyChanged=(currentEditInvoice.items||[]).some((item,index)=>{
       const tr=document.querySelector(
         `#editItemsBody tr[data-edit-index="${index}"]`
@@ -2150,6 +2311,13 @@
         (invoiceChanged?" → "+payload.invoiceNo:""),
       "Customer: "+String(currentEditInvoice.customer||"")+
         (customerChanged?" → "+payload.customer:""),
+      "Payment: "+String(currentEditInvoice.paymentMethod||"")+
+        (payload.paymentMethod!==String(currentEditInvoice.paymentMethod||"")
+          ?" → "+payload.paymentMethod
+          :""),
+      payload.paymentMethod==="Cash + Bank"
+        ?"Split: Cash "+payload.splitCashAmount+" + Bank "+payload.splitBankAmount
+        :"",
       qtyChanged
         ? "Stock: rebuild this invoice's original sale using the corrected QTY."
         : "Stock: no QTY rebuild needed.",
