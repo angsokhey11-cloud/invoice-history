@@ -2331,6 +2331,7 @@
     }
 
     const qtyChanged=(currentEditInvoice.items||[]).some((item,index)=>{
+      if(!String(item?.lineId||"").trim())return true;
       const tr=document.querySelector(
         `#editItemsBody tr[data-edit-index="${index}"]`
       );
