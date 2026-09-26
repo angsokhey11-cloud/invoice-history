@@ -698,7 +698,7 @@
 
         <div class="field">
           <label>Customer</label>
-          <input id="customer" type="text" placeholder="Customer name">
+          <input id="customer" type="text" placeholder="Type customer keyword..." oninput="scheduleCustomerKeywordSearch()">
         </div>
 
         <div class="field">
@@ -727,7 +727,7 @@
           </select>
         </div>
 
-        <button class="btn btn-primary" type="button" onclick="loadInvoices()">
+        <button class="btn btn-primary" type="button" onclick="applyInvoiceFilters()">
           Search
         </button>
 
@@ -865,6 +865,15 @@
   let historyLastRevision = "";
   let historySyncTimer = null;
   let historySyncBusy = false;
+  let historyCustomerSearchTimer = null;
+  let historyLoadSequence = 0;
+  let historyAppliedFilters = {
+    invoiceNo: "",
+    locationCode: "",
+    dateFrom: "",
+    dateTo: "",
+    invoiceType: ""
+  };
 
 
   function $(id) {
@@ -1004,13 +1013,35 @@
 
   function historyCurrentFilterKey() {
     return JSON.stringify({
-      invoiceNo: String($("invoiceNo")?.value || "").trim(),
+      invoiceNo: String(historyAppliedFilters.invoiceNo || "").trim(),
       customer: String($("customer")?.value || "").trim(),
+      locationCode: String(historyAppliedFilters.locationCode || "").trim(),
+      dateFrom: String(historyAppliedFilters.dateFrom || ""),
+      dateTo: String(historyAppliedFilters.dateTo || ""),
+      invoiceType: String(historyAppliedFilters.invoiceType || "")
+    });
+  }
+
+  function readInvoiceFilterInputs() {
+    return {
+      invoiceNo: String($("invoiceNo")?.value || "").trim(),
       locationCode: String($("locationCode")?.value || "").trim(),
       dateFrom: String($("dateFrom")?.value || ""),
       dateTo: String($("dateTo")?.value || ""),
       invoiceType: String($("invoiceType")?.value || "")
-    });
+    };
+  }
+
+  function applyInvoiceFilters() {
+    historyAppliedFilters = readInvoiceFilterInputs();
+    loadInvoices();
+  }
+
+  function scheduleCustomerKeywordSearch() {
+    clearTimeout(historyCustomerSearchTimer);
+    historyCustomerSearchTimer = setTimeout(() => {
+      loadInvoices({ silent: true, customerLive: true });
+    }, 220);
   }
 
   function historyDetailCacheKey(invoiceNo, invoiceId) {
@@ -1216,6 +1247,7 @@
   async function loadInvoices(options = {}) {
 
     const silent = options && options.silent === true;
+    const loadSequence = ++historyLoadSequence;
     hideError();
 
     if (!silent) {
@@ -1231,11 +1263,11 @@
       // so we enrich their location from Master Database before filtering.
       const data = await fetchApi({
         action: "invoiceList",
-        invoiceNo: $("invoiceNo").value.trim(),
+        invoiceNo: String(historyAppliedFilters.invoiceNo || "").trim(),
         customer: $("customer").value.trim(),
-        dateFrom: $("dateFrom").value,
-        dateTo: $("dateTo").value,
-        invoiceType: $("invoiceType").value
+        dateFrom: historyAppliedFilters.dateFrom || null,
+        dateTo: historyAppliedFilters.dateTo || null,
+        invoiceType: historyAppliedFilters.invoiceType || ""
       });
 
       let invoices = Array.isArray(data.invoices) ? data.invoices : [];
@@ -1245,12 +1277,14 @@
 
       // Exact Location filter is applied AFTER enrichment so old invoices
       // can still be found by location.
-      const selectedLocation = String($("locationCode").value || "").trim().toLowerCase();
+      const selectedLocation = String(historyAppliedFilters.locationCode || "").trim().toLowerCase();
       if (selectedLocation) {
         invoices = invoices.filter(invoice =>
           String(invoice.locationCode || "").trim().toLowerCase() === selectedLocation
         );
       }
+
+      if (loadSequence !== historyLoadSequence) return;
 
       const revision = String(data.revision || historyLastRevision || "");
       if (revision) historyLastRevision = revision;
@@ -1264,6 +1298,7 @@
 
     } catch (error) {
 
+      if (loadSequence !== historyLoadSequence) return;
       console.error(error);
 
       // If the network is temporarily unavailable, keep/use the device cache.
@@ -1348,6 +1383,14 @@
     $("dateFrom").value = "";
     $("dateTo").value = "";
     $("invoiceType").value = "";
+
+    historyAppliedFilters = {
+      invoiceNo: "",
+      locationCode: "",
+      dateFrom: "",
+      dateTo: "",
+      invoiceType: ""
+    };
 
     loadInvoices();
   }
