@@ -45,7 +45,7 @@ function showError(message){
 
 try{
   await assertHistoryPermission();
-  const templateResponse=await fetch('your-invoices-mobile.html?v=20260925-assigned2',{cache:'no-store'});
+  const templateResponse=await fetch('your-invoices-mobile.html?v=20260926-livecustomer1',{cache:'no-store'});
   if(!templateResponse.ok)throw new Error('Could not load the mobile Invoice History layout.');
 
   let html=await templateResponse.text();
@@ -53,7 +53,7 @@ try{
   html=html.replace('<div id="boot">Loading Your Invoices…</div>','<div id="boot">Loading Invoice History…</div>');
   html=html.replace(
     /src="your-invoices\.html\?[^"]*"/,
-    'src="invoice-history-all.html?embed=1&mobileSkin=1&mobileScope=1&v=20260925-assigned2"'
+    'src="invoice-history-all.html?embed=1&mobileSkin=1&mobileScope=1&v=20260926-livecustomer1"'
   );
   html=html.replace('title="Your Invoices"','title="Invoice History"');
 
