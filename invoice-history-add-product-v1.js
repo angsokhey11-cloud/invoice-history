@@ -100,6 +100,7 @@ function ensureUi(){
     if(!btn)return;
     const index=Number(btn.dataset.editRemoveAdded);
     if(!Number.isInteger(index)||!currentEditInvoice?.items?.[index]?._historyAdded)return;
+    syncRowsToState();
     currentEditInvoice.items.splice(index,1);
     renderEditRows();
     refreshCatalogOptions();
@@ -161,6 +162,22 @@ async function loadCatalog(force=false){
 
 function itemCode(item){
   return clean(item?.exactProductCode||item?.productCode);
+}
+
+function syncRowsToState(){
+  if(!currentEditInvoice||!Array.isArray(currentEditInvoice.items))return;
+  currentEditInvoice.items.forEach((item,index)=>{
+    const row=document.querySelector('#editItemsBody tr[data-edit-index="'+index+'"]');
+    if(!row)return;
+    const qty=row.querySelector('.edit-item-qty');
+    const price=row.querySelector('.edit-item-price');
+    if(qty)item.qty=Math.max(0,num(qty.value));
+    if(price){
+      const v=Math.max(0,num(price.value));
+      item.price=v;
+      item.unitPrice=v;
+    }
+  });
 }
 
 function refreshCatalogOptions(){
@@ -277,6 +294,7 @@ async function addProduct(){
       return;
     }
 
+    syncRowsToState();
     currentEditInvoice.items=currentEditInvoice.items||[];
     currentEditInvoice.items.push({
       lineId:'',
