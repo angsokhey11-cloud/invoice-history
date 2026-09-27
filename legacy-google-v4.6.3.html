@@ -159,7 +159,7 @@
 
     .filter-grid {
       display: grid;
-      grid-template-columns: 1.05fr 1.25fr .9fr 1fr 1fr 1fr auto auto;
+      grid-template-columns: 1.05fr 1.25fr .9fr 1fr 1fr .9fr .95fr auto auto;
       gap: 10px;
       align-items: end;
     }
@@ -1011,6 +1011,16 @@
           </select>
         </div>
 
+        <div class="field">
+          <label>Recent Key-In</label>
+          <select id="recentCount">
+            <option value="">All Entries</option>
+            <option value="10">Latest 10</option>
+            <option value="25">Latest 25</option>
+            <option value="50">Latest 50</option>
+          </select>
+        </div>
+
         <button class="btn btn-primary" type="button" onclick="applyInvoiceFilters()">
           Search
         </button>
@@ -1156,7 +1166,8 @@
     locationCode: "",
     dateFrom: "",
     dateTo: "",
-    invoiceType: ""
+    invoiceType: "",
+    recentCount: ""
   };
 
 
@@ -1302,7 +1313,8 @@
       locationCode: String(historyAppliedFilters.locationCode || "").trim(),
       dateFrom: String(historyAppliedFilters.dateFrom || ""),
       dateTo: String(historyAppliedFilters.dateTo || ""),
-      invoiceType: String(historyAppliedFilters.invoiceType || "")
+      invoiceType: String(historyAppliedFilters.invoiceType || ""),
+      recentCount: String(historyAppliedFilters.recentCount || "")
     });
   }
 
@@ -1312,7 +1324,8 @@
       locationCode: String($("locationCode")?.value || "").trim(),
       dateFrom: String($("dateFrom")?.value || ""),
       dateTo: String($("dateTo")?.value || ""),
-      invoiceType: String($("invoiceType")?.value || "")
+      invoiceType: String($("invoiceType")?.value || ""),
+      recentCount: String($("recentCount")?.value || "")
     };
   }
 
@@ -1568,6 +1581,24 @@
         );
       }
 
+      /*
+       * Recent Key-In uses the database entry timestamp, NOT Invoice Date.
+       * This is intentional: an invoice keyed today with an old stock/invoice
+       * date must still appear at the top of Recent Key-In.
+       */
+      const recentCount = Math.max(0, Number(historyAppliedFilters.recentCount) || 0);
+      if (recentCount > 0) {
+        invoices = invoices
+          .slice()
+          .sort((a,b) => {
+            const aTime = Date.parse(a?.createdAt || "") || 0;
+            const bTime = Date.parse(b?.createdAt || "") || 0;
+            if (bTime !== aTime) return bTime - aTime;
+            return String(b?.invoiceNo || "").localeCompare(String(a?.invoiceNo || ""), undefined, {numeric:true});
+          })
+          .slice(0, recentCount);
+      }
+
       if (loadSequence !== historyLoadSequence) return;
 
       const revision = String(data.revision || historyLastRevision || "");
@@ -1667,13 +1698,15 @@
     $("dateFrom").value = "";
     $("dateTo").value = "";
     $("invoiceType").value = "";
+    $("recentCount").value = "";
 
     historyAppliedFilters = {
       invoiceNo: "",
       locationCode: "",
       dateFrom: "",
       dateTo: "",
-      invoiceType: ""
+      invoiceType: "",
+      recentCount: ""
     };
 
     loadInvoices();
