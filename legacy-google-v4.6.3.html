@@ -660,6 +660,32 @@
 
 .history-final-header{display:flex!important;justify-content:space-between!important;align-items:flex-start!important;gap:25px!important;min-height:70px!important}.history-final-company{line-height:1.15!important}.history-final-company-name{font-size:25px!important;font-weight:800!important;letter-spacing:1.2px!important;color:#174a91!important;margin-bottom:2px!important}.history-final-company-tagline{font-size:11px!important;font-weight:500!important;letter-spacing:.8px!important;color:#56657a!important}.history-final-header-message{text-align:right!important;color:#2867b2!important;font-size:11px!important;line-height:1.35!important;padding-top:5px!important}.history-final-bill-row{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 205px!important;gap:20px!important;margin-bottom:18px!important;min-height:105px!important}.history-final-bill,.history-final-shipping{font-size:13px!important;line-height:1.5!important;min-width:0!important}.history-final-shipping{border-left:1px solid #9eacc0!important;padding-left:20px!important}.history-final-bill-label,.history-final-shipping-label{font-weight:800!important;font-size:14px!important;margin-bottom:10px!important}.history-final-bill-detail-row{display:grid!important;grid-template-columns:112px 10px minmax(0,1fr)!important;gap:4px!important;margin-bottom:7px!important;align-items:start!important}.history-final-bill-detail-label{font-weight:700!important;white-space:nowrap!important}.history-final-shipping-value{white-space:pre-line!important;overflow-wrap:anywhere!important}
 
+
+/* =====================================================
+   INVOICE DOCUMENT V2 — fixed A4 canvas
+   Preview, image export and print use the same geometry.
+   ===================================================== */
+.history-final-invoice{
+  width:794px!important;
+  max-width:794px!important;
+  min-width:794px!important;
+  min-height:1123px!important;
+  margin:0 auto!important;
+  padding:30px 34px 30px!important;
+  background:#fff!important;
+  box-sizing:border-box!important;
+}
+.history-final-invoice .history-final-title{margin-bottom:20px!important}
+.history-final-invoice .history-final-table{min-width:0!important;width:100%!important;table-layout:fixed!important}
+.history-final-invoice .history-final-bottom-grid{grid-template-columns:minmax(0,1fr) 330px!important}
+.history-final-invoice .history-final-payment-box{width:48%!important}
+.history-final-invoice .history-final-signature-grid{grid-template-columns:1fr 1fr!important}
+.history-invoice-wrap{overflow-x:auto!important}
+@media(max-width:860px){
+  .history-invoice-wrap{padding:10px!important}
+  #historyInvoicePrintArea{width:794px!important;transform-origin:top left}
+}
+
 </style>
 </head>
 
@@ -1807,7 +1833,7 @@
     }
 </style></head><body>${invoice.outerHTML}</body></html>`);win.document.close();win.onload=()=>setTimeout(()=>{win.focus();win.print();},250);}
 
-  async function createHistoryInvoiceImage(){if(typeof html2canvas!=="function")throw new Error("Image library is not loaded.");const invoice=getHistoryInvoiceElement();if(!invoice)throw new Error("Invoice is not ready.");const wrapper=document.createElement("div");wrapper.style.position="fixed";wrapper.style.left="-100000px";wrapper.style.top="0";wrapper.style.width="794px";wrapper.style.background="#fff";wrapper.style.zIndex="-1";const clone=invoice.cloneNode(true);clone.style.maxWidth="794px";wrapper.appendChild(clone);document.body.appendChild(wrapper);try{const canvas=await html2canvas(clone,{backgroundColor:"#ffffff",scale:Math.min(3,Math.max(2,window.devicePixelRatio||1)),useCORS:true,logging:false});return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Could not create invoice image.")),"image/png"));}finally{wrapper.remove();}}
+  async function createHistoryInvoiceImage(){if(typeof html2canvas!=="function")throw new Error("Image library is not loaded.");const invoice=getHistoryInvoiceElement();if(!invoice)throw new Error("Invoice is not ready.");const wrapper=document.createElement("div");wrapper.style.position="fixed";wrapper.style.left="-100000px";wrapper.style.top="0";wrapper.style.width="794px";wrapper.style.background="#fff";wrapper.style.zIndex="-1";const clone=invoice.cloneNode(true);clone.style.width="794px";clone.style.minWidth="794px";clone.style.maxWidth="794px";clone.style.minHeight="1123px";clone.style.margin="0";wrapper.appendChild(clone);document.body.appendChild(wrapper);try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));const canvas=await html2canvas(clone,{backgroundColor:"#ffffff",scale:2,useCORS:true,logging:false,width:794,height:Math.max(1123,clone.scrollHeight),windowWidth:1200,windowHeight:1400,scrollX:0,scrollY:0});return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Could not create invoice image.")),"image/png"))}finally{wrapper.remove();}}
   function historySafeFileName(value,fallback){return String(value||fallback||"Invoice").replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||fallback||"Invoice";}
 
   async function saveHistoryInvoiceToDevice(event){if(event){event.preventDefault();event.stopPropagation();}const button=event?.currentTarget,oldText=button?.innerHTML||"";try{if(button){button.disabled=true;button.innerHTML="⏳ Preparing...";}const blob=await createHistoryInvoiceImage();const invoiceNo=currentHistoryInvoice?.invoiceNo||"Invoice";const date=historyDate(currentHistoryInvoice?.invoiceDate||"");const fileName=`BIG-BROTHER-${historySafeFileName(invoiceNo,"Invoice")}-${historySafeFileName(date,"Date")}.png`;const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=fileName;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}catch(error){console.error("Invoice image save failed:",error);alert("Could not save the invoice picture. Please try again.");}finally{if(button){button.disabled=false;button.innerHTML=oldText;}}}
