@@ -918,6 +918,32 @@
   font-size:12.5px!important;
 }
 
+
+/* INVOICE BODY V6 — accounting-style currency alignment */
+.history-final-invoice .history-money-accounting{
+  display:grid!important;
+  grid-template-columns:auto 1fr!important;
+  align-items:baseline!important;
+  width:100%!important;
+  gap:8px!important;
+  white-space:nowrap!important;
+}
+.history-final-invoice .history-money-symbol{
+  text-align:left!important;
+  font-weight:inherit!important;
+}
+.history-final-invoice .history-money-number{
+  text-align:right!important;
+  font-weight:inherit!important;
+}
+.history-final-invoice .history-final-table td:nth-child(4),
+.history-final-invoice .history-final-table td:nth-child(5){
+  text-align:left!important;
+}
+.history-final-invoice .history-final-summary-value{
+  min-width:112px!important;
+}
+
 </style>
 </head>
 
@@ -1982,6 +2008,16 @@
     return "$" + n.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
   }
 
+  function historyMoneyAccounting(value, currency) {
+    const n = numberValue(value);
+    const isKhr = String(currency || "USD").toUpperCase() === "KHR";
+    const symbol = isKhr ? "៛" : "$";
+    const amount = isKhr
+      ? Math.round(n).toLocaleString("en-US")
+      : n.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
+    return `<span class="history-money-accounting"><span class="history-money-symbol">${symbol}</span><span class="history-money-number">${amount}</span></span>`;
+  }
+
   function historyDate(value) {
     if (!value) return "";
     const raw = String(value).trim();
@@ -1995,22 +2031,23 @@
     const esc=escapeHtml;
     const currency=String(invoice.currency || "USD").toUpperCase();
     const money=value=>historyMoney(value,currency);
+    const accountingMoney=value=>historyMoneyAccounting(value,currency);
     const items=Array.isArray(invoice.items)?invoice.items:[];
     const outstanding=Math.max(0,numberValue(invoice.outstanding));
     const discount=Math.max(0,numberValue(invoice.discount));
     const amountPaid=Math.max(0,numberValue(invoice.amountPaid));
     const exchangeRate=numberValue(invoice.exchangeRate);
     const rows=items.length?items.map((item,index)=>`
-      <tr><td>${index+1}</td><td><div class="history-final-desc">${esc(item.productName || item.productCode || "")}</div>${item.productBarcode||item.barcode?`<span class="history-final-barcode">Barcode: ${esc(item.productBarcode||item.barcode)}</span>`:""}${item.productNote?`<span class="history-final-product-note">Note: ${esc(item.productNote)}</span>`:""}</td><td><div class="history-final-qty-unit">${numberValue(item.qty).toLocaleString("en-US",{maximumFractionDigits:2})}${item.unit?`<span class="history-final-unit-small">/${esc(item.unit)}</span>`:""}</div></td><td>${money(item.price)}</td><td>${money(item.total)}</td></tr>`).join(""):`<tr><td colspan="5" style="text-align:center;padding:18px">No products found</td></tr>`;
+      <tr><td>${index+1}</td><td><div class="history-final-desc">${esc(item.productName || item.productCode || "")}</div>${item.productBarcode||item.barcode?`<span class="history-final-barcode">Barcode: ${esc(item.productBarcode||item.barcode)}</span>`:""}${item.productNote?`<span class="history-final-product-note">Note: ${esc(item.productNote)}</span>`:""}</td><td><div class="history-final-qty-unit">${numberValue(item.qty).toLocaleString("en-US",{maximumFractionDigits:2})}${item.unit?`<span class="history-final-unit-small">/${esc(item.unit)}</span>`:""}</div></td><td>${accountingMoney(item.price)}</td><td>${accountingMoney(item.total)}</td></tr>`).join(""):`<tr><td colspan="5" style="text-align:center;padding:18px">No products found</td></tr>`;
 
     const summary=[];
     if(discount>0){
-      summary.push(`<div class="history-final-summary-row"><span class="history-final-summary-label">Subtotal</span><span class="history-final-summary-value">${money(invoice.subtotal)}</span></div>`);
-      summary.push(`<div class="history-final-summary-row"><span class="history-final-summary-label">Discount</span><span class="history-final-summary-value">-${money(discount)}</span></div>`);
+      summary.push(`<div class="history-final-summary-row"><span class="history-final-summary-label">Subtotal</span><span class="history-final-summary-value">${accountingMoney(invoice.subtotal)}</span></div>`);
+      summary.push(`<div class="history-final-summary-row"><span class="history-final-summary-label">Discount</span><span class="history-final-summary-value">-${accountingMoney(discount)}</span></div>`);
     }
-    summary.push(`<div class="history-final-summary-row grand"><span>Grand Total</span><span class="history-final-summary-value">${money(invoice.grandTotal)}</span></div>`);
-    summary.push(`<div class="history-final-summary-row"><span class="history-final-summary-label">Amount Paid</span><span class="history-final-summary-value">${money(amountPaid)}</span></div>`);
-    if(outstanding>0) summary.push(`<div class="history-final-summary-row credit"><span class="history-final-summary-label">Credit Amount</span><span class="history-final-summary-value">${money(outstanding)}</span></div>`);
+    summary.push(`<div class="history-final-summary-row grand"><span>Grand Total</span><span class="history-final-summary-value">${accountingMoney(invoice.grandTotal)}</span></div>`);
+    summary.push(`<div class="history-final-summary-row"><span class="history-final-summary-label">Amount Paid</span><span class="history-final-summary-value">${accountingMoney(amountPaid)}</span></div>`);
+    if(outstanding>0) summary.push(`<div class="history-final-summary-row credit"><span class="history-final-summary-label">Credit Amount</span><span class="history-final-summary-value">${accountingMoney(outstanding)}</span></div>`);
 
     const noteHtml=String(invoice.note||"").trim()?String(invoice.note).split(/\r?\n/).map(line=>`<div class="history-final-note-line">${esc(line)}</div>`).join(""):`<div class="history-final-note-line">&nbsp;</div>`;
     const bankInfo=[invoice.bankPayment?`Bank Payment: ${esc(invoice.bankPayment)}`:"",invoice.bankReference?`Reference: ${esc(invoice.bankReference)}`:""].filter(Boolean).join("<br>");
