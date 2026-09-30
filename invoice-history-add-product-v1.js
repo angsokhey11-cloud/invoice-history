@@ -286,7 +286,7 @@ async function addProduct(){
       return;
     }
 
-    if(qty>num(product.availableQty)+EPS){
+    if(!isService(product) && qty>num(product.availableQty)+EPS){
       alert(product.productName+': QTY '+qty+' exceeds available stock '+num(product.availableQty)+'.');
       return;
     }
@@ -295,8 +295,9 @@ async function addProduct(){
     if(!clean(priceInput?.value))price=priceForProduct(product);
 
     const isBatch=!!clean(currentEditInvoice?.batchId||currentEditInvoice?.batchNumber);
-    const allocation=isBatch?null:buildDirectAllocation(product,qty);
-    if(!isBatch&&(!Array.isArray(allocation)||!allocation.length)){
+    const service=isService(product);
+    const allocation=service?null:(isBatch?null:buildDirectAllocation(product,qty));
+    if(!service&&!isBatch&&(!Array.isArray(allocation)||!allocation.length)){
       alert(product.productName+': current Warehouse stock cannot cover this QTY.');
       return;
     }
@@ -313,6 +314,8 @@ async function addProduct(){
       productBarcode:clean(product.barcode),
       barcode:clean(product.barcode),
       unit:clean(product.unit),
+      itemType:service?'SERVICE':'PRODUCT',
+      trackStock:!service,
       qty,
       price,
       unitPrice:price,
