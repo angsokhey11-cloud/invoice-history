@@ -268,7 +268,7 @@ async function addProduct(){
     const product=findCatalogProduct(query);
 
     if(!product){
-      alert('Please choose one exact Product from the Add Product list.');
+      alert('Please choose one exact Product or Service from the Add Item list.');
       search?.focus();
       return;
     }
@@ -352,6 +352,7 @@ function renderEditRows(){
     return '<tr data-edit-index="'+index+'">'+
       '<td>'+esc(itemCode(item))+(added?'<span class="edit-added-badge">NEW</span>':'')+'</td>'+
       '<td><strong>'+esc(item.productName||itemCode(item))+'</strong>'+
+        (String(item.itemType||'').toUpperCase()==='SERVICE'?'<span class="edit-added-badge">SERVICE</span>':'')+
         (barcode?'<br><small>Barcode: '+esc(barcode)+'</small>':'')+
         (item.productNote?'<br><small>Note: '+esc(item.productNote)+'</small>':'')+
         (item.unit?'<br><small>Unit: '+esc(item.unit)+'</small>':'')+
@@ -393,7 +394,9 @@ function patchBuildPayload(){
 
       const catalogProduct=item._editCatalogProduct||editCatalog.find(p=>clean(p.productCode)===code);
       const batch=!!clean(currentEditInvoice.batchId||currentEditInvoice.batchNumber);
-      if(!batch){
+      if(isService(catalogProduct)){
+        payloadItem.stockAllocation=null;
+      }else if(!batch){
         const alloc=buildDirectAllocation(catalogProduct,payloadItem.qty);
         payloadItem.stockAllocation=alloc;
       }
@@ -449,5 +452,5 @@ function boot(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
 else boot();
 
-window.BB_INVOICE_HISTORY_ADD_PRODUCT_BUILD='20260926-v1';
+window.BB_INVOICE_HISTORY_ADD_PRODUCT_BUILD='20260930-service1';
 })();
