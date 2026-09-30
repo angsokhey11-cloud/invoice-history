@@ -198,12 +198,13 @@ function refreshCatalogOptions(){
 
   const available=editCatalog.filter(p=>!used.has(clean(p.productCode)));
   list.innerHTML=available.map(p=>{
-    const remaining=num(p.availableQty);
-    const text=clean(p.productName)+' — '+clean(p.productCode)+' · Available '+remaining.toLocaleString('en-US',{maximumFractionDigits:3});
+    const text=isService(p)
+      ? clean(p.productName)+' — '+clean(p.productCode)+' · SERVICE'
+      : clean(p.productName)+' — '+clean(p.productCode)+' · Available '+num(p.availableQty).toLocaleString('en-US',{maximumFractionDigits:3});
     return '<option value="'+esc(p.productCode)+'" label="'+esc(text)+'"></option>';
   }).join('');
 
-  if(label)label.textContent=available.length+' product'+(available.length===1?'':'s')+' available';
+  if(label)label.textContent=available.length+' item'+(available.length===1?'':'s')+' available';
 }
 
 function findCatalogProduct(input){
