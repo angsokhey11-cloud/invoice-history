@@ -164,6 +164,12 @@ function itemCode(item){
   return clean(item?.exactProductCode||item?.productCode);
 }
 
+function isService(product){
+  return clean(product?.itemType).toUpperCase()==='SERVICE' ||
+    product?.trackStock===false ||
+    clean(product?.trackStock).toLowerCase()==='false';
+}
+
 function syncRowsToState(){
   if(!currentEditInvoice||!Array.isArray(currentEditInvoice.items))return;
   currentEditInvoice.items.forEach((item,index)=>{
