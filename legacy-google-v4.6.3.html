@@ -2051,6 +2051,16 @@
     return `<span class="history-money-accounting"><span class="history-money-symbol">${symbol}</span><span class="history-money-number">${amount}</span></span>`;
   }
 
+  function historyUnitPriceAccounting(value, currency) {
+    const n = numberValue(value);
+    const isKhr = String(currency || "USD").toUpperCase() === "KHR";
+    const symbol = isKhr ? "៛" : "$";
+    const amount = isKhr
+      ? Math.round(n).toLocaleString("en-US")
+      : n.toLocaleString("en-US", {minimumFractionDigits:4, maximumFractionDigits:4});
+    return `<span class="history-money-accounting"><span class="history-money-symbol">${symbol}</span><span class="history-money-number">${amount}</span></span>`;
+  }
+
   function historyDate(value) {
     if (!value) return "";
     const raw = String(value).trim();
@@ -2071,7 +2081,7 @@
     const amountPaid=Math.max(0,numberValue(invoice.amountPaid));
     const exchangeRate=numberValue(invoice.exchangeRate);
     const rows=items.length?items.map((item,index)=>`
-      <tr><td>${index+1}</td><td><div class="history-final-desc">${esc(item.productName || item.productCode || "")}</div>${item.productBarcode||item.barcode?`<span class="history-final-barcode">Barcode: ${esc(item.productBarcode||item.barcode)}</span>`:""}${item.productNote?`<span class="history-final-product-note">Note: ${esc(item.productNote)}</span>`:""}</td><td><div class="history-final-qty-unit">${numberValue(item.qty).toLocaleString("en-US",{maximumFractionDigits:2})}${item.unit?`<span class="history-final-unit-small">/${esc(item.unit)}</span>`:""}</div></td><td>${accountingMoney(item.price)}</td><td>${accountingMoney(item.total)}</td></tr>`).join(""):`<tr><td colspan="5" style="text-align:center;padding:18px">No products found</td></tr>`;
+      <tr><td>${index+1}</td><td><div class="history-final-desc">${esc(item.productName || item.productCode || "")}</div>${item.productBarcode||item.barcode?`<span class="history-final-barcode">Barcode: ${esc(item.productBarcode||item.barcode)}</span>`:""}${item.productNote?`<span class="history-final-product-note">Note: ${esc(item.productNote)}</span>`:""}</td><td><div class="history-final-qty-unit">${numberValue(item.qty).toLocaleString("en-US",{maximumFractionDigits:2})}${item.unit?`<span class="history-final-unit-small">/${esc(item.unit)}</span>`:""}</div></td><td>${historyUnitPriceAccounting(item.price,currency)}</td><td>${accountingMoney(item.total)}</td></tr>`).join(""):`<tr><td colspan="5" style="text-align:center;padding:18px">No products found</td></tr>`;
 
     const summary=[];
     if(discount>0){
@@ -2408,7 +2418,7 @@
     $("editNote").value=invoice.note||"";
 
     const items=Array.isArray(invoice.items)?invoice.items:[];
-    $("editItemsBody").innerHTML=items.map((item,index)=>`<tr data-edit-index="${index}"><td>${escapeHtml(item.productCode||"")}</td><td><strong>${escapeHtml(item.productName||item.productCode||"")}</strong>${item.productBarcode||item.barcode?`<br><small>Barcode: ${escapeHtml(item.productBarcode||item.barcode)}</small>`:""}${item.productNote?`<br><small>Note: ${escapeHtml(item.productNote)}</small>`:""}${item.unit?`<br><small>Unit: ${escapeHtml(item.unit)}</small>`:""}</td><td><input class="edit-item-qty" type="number" min="0" step="0.01" value="${numberValue(item.qty)}" oninput="recalcEditInvoice()"></td><td><input class="edit-item-price" type="number" min="0" step="0.01" value="${numberValue(item.price)}" oninput="recalcEditInvoice()"></td><td class="money edit-item-total">0.00</td></tr>`).join("");
+    $("editItemsBody").innerHTML=items.map((item,index)=>`<tr data-edit-index="${index}"><td>${escapeHtml(item.productCode||"")}</td><td><strong>${escapeHtml(item.productName||item.productCode||"")}</strong>${item.productBarcode||item.barcode?`<br><small>Barcode: ${escapeHtml(item.productBarcode||item.barcode)}</small>`:""}${item.productNote?`<br><small>Note: ${escapeHtml(item.productNote)}</small>`:""}${item.unit?`<br><small>Unit: ${escapeHtml(item.unit)}</small>`:""}</td><td><input class="edit-item-qty" type="number" min="0" step="0.01" value="${numberValue(item.qty)}" oninput="recalcEditInvoice()"></td><td><input class="edit-item-price" type="number" min="0" step="0.0001" value="${Number(numberValue(item.price)).toFixed(4)}" oninput="recalcEditInvoice()"></td><td class="money edit-item-total">0.00</td></tr>`).join("");
     recalcEditInvoice();
   }
 
