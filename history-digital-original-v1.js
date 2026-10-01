@@ -92,6 +92,7 @@ async function save(){
    {p_invoice_id:invoiceId,p_storage_path:path});
   if(!saved?.success)throw Error('Could not register the digital original.');
   uploadedPath='';
+  ++serial; // Ignore any status check started before the successful registration.
   if(active?.invoiceId===invoiceId){
    btn.hidden=true;
    showStatus('✅ Digital Original Saved');
