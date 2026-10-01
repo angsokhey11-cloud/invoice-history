@@ -39,6 +39,17 @@
     html=html.replaceAll('Sales Database','BIG BROTHER Database');
     html=html.replace('<title>BIG BROTHER — Invoice History Workspace</title>','<title>BIG BROTHER — Invoice History</title>');
 
+    // Credit invoices only: show the Digital Original action after a fresh
+    // server check. No button appears on cash/bank or paid invoice previews.
+    const detailAction='<button type="button" class="history-action-btn history-save-btn" id="bbSaveDigitalOriginal" hidden onclick="window.BBDigitalOriginal.save()">📄 Save as Digital Original</button><span id="bbDigitalOriginalBadge" hidden style="padding:8px 10px;border-radius:8px;background:#ecf8f0;color:#207148;font-size:12px;font-weight:800"></span>';
+    const actionAnchor='<button type="button" class="history-action-btn history-telegram-btn" onclick="shareHistoryInvoiceToTelegram(event)">✈️ Share to Telegram</button>';
+    if(!html.includes(actionAnchor))throw Error('Invoice preview action anchor not found');
+    html=html.replace(actionAnchor,actionAnchor+detailAction);
+    html=html.replace('</head>','<style>#bbSaveDigitalOriginal[hidden],#bbDigitalOriginalBadge[hidden]{display:none!important}#bbDigitalOriginalBadge{grid-column:1/-1}.history-invoice-actions:has(#bbSaveDigitalOriginal:not([hidden])){grid-template-columns:repeat(auto-fit,minmax(155px,1fr))}@media(max-width:600px){.history-invoice-actions:has(#bbSaveDigitalOriginal:not([hidden])){grid-template-columns:1fr}}</style></head>');
+    const renderAnchor='function renderDetail(invoice){currentHistoryInvoice=invoice;$("detailLoading").style.display="none";$("detailContent").style.display="block";$("historyInvoicePrintArea").innerHTML=buildHistoryInvoiceHtml(invoice);}';
+    if(!html.includes(renderAnchor))throw Error('Invoice detail renderer anchor not found');
+    html=html.replace(renderAnchor,renderAnchor.slice(0,-1)+'window.BBDigitalOriginal?.refresh(invoice);}');
+    html=html.replace('</body>', '<scr'+'ipt src="history-digital-original-v1.js?v=20261001-creditdigital2"></scr'+'ipt></body>');
     document.open();document.write(html);document.close();
   }catch(error){
     console.error(error);
