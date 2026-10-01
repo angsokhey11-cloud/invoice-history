@@ -51,10 +51,10 @@
       `;
     if(!html.includes(marker))throw new Error('Invoice History initialization marker was not found.');
     html=html.replace(marker,replacement);
-    const initTail='    startHistorySmartSync();\\n  })();';
+    const initTail='    startHistorySmartSync();\n  })();';
     if(!html.includes(initTail))throw Error('Invoice History final initialization marker missing.');
     html=html.replace(initTail,
-      '    startHistorySmartSync();\\n  } catch(error) { console.error("Invoice History startup:",error);'+
+      '    startHistorySmartSync();\n  } catch(error) { console.error("Invoice History startup:",error);'+
       ' const message=String(error?.message||error);'+
       ' const loader=document.getElementById("loading");'+
       ' if(loader)loader.textContent="Cannot load invoices: "+message;'+
