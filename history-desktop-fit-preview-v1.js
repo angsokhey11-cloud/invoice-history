@@ -27,7 +27,6 @@ let scheduled=0;
 let lastScale=1;
 function moveActions(){
  if(!desktop())return;
- moveActions();
  const modal=document.getElementById('detailModal');
  const head=modal?.querySelector('.modal-head');
  const actions=modal?.querySelector('.history-invoice-actions');
@@ -42,6 +41,7 @@ function moveActions(){
 function fit(){
  scheduled=0;
  if(!desktop())return;
+ moveActions();
  const modal=document.getElementById('detailModal');
  if(!modal?.classList.contains('show'))return;
  const wrap=modal.querySelector('.history-invoice-wrap');
@@ -51,10 +51,12 @@ function fit(){
  // Only fit the visible invoice CONTENT; do not shrink because the A4
  // print template keeps hundreds of blank pixels below the signatures.
  const lastContent=invoice.querySelector('.history-final-signature-grid')||invoice.lastElementChild;
+ // Measure at 100% size so the initial CSS scale cannot skew the result.
+ area.style.setProperty('--bb-preview-scale','1');
  const invoiceRect=invoice.getBoundingClientRect();
  const lastRect=lastContent?.getBoundingClientRect();
  const contentHeight=lastRect?.height
-  ? Math.max(440,(lastRect.bottom-invoiceRect.top)/lastScale+38)
+  ? Math.max(440,(lastRect.bottom-invoiceRect.top)+38)
   : Math.max(650,invoice.scrollHeight);
  const availableWidth=Math.max(0,wrap.clientWidth-24);
  const availableHeight=Math.max(0,wrap.clientHeight-12);
