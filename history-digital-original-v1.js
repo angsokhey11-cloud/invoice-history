@@ -4,6 +4,7 @@
 const HOST='https://sjfhlaclgmkwwofzstok.supabase.co';
 const KEY='sb_publishable_w762jR65CWwlO30fKQsYOw_6L9grx8S';
 const BUCKET='bb-real-invoices';
+const api=()=>window.BBHistoryAdapter||window.BBHistoryMobileAdapter||window.BBHistoryAllAdapter;
 let active=null,serial=0,busy=false;
 const button=()=>document.getElementById('bbSaveDigitalOriginal');
 const badge=()=>document.getElementById('bbDigitalOriginalBadge');
@@ -21,7 +22,7 @@ async function refresh(invoice){
  btn.hidden=true;btn.disabled=true;showStatus('');
  if(!eligibleLocal(invoice))return;
  try{
-  const check=await window.BBHistoryAdapter.rpc('bb_real_invoice_digital_status',
+  const check=await api().rpc('bb_real_invoice_digital_status',
    {p_invoice_id:String(invoice.invoiceId)});
   if(request!==serial||active?.invoiceId!==invoice.invoiceId)return;
   if(check.hasImage){
@@ -32,7 +33,7 @@ async function refresh(invoice){
  }catch(e){if(request===serial){console.warn('Original status:',e);showStatus('Invoice image status unavailable. Try reopening this invoice.')}}
 }
 async function auth(){
- const s=await window.BBHistoryAdapter.ensureSession();
+ const s=await api().ensureSession();
  if(!s?.access_token)throw Error('Please sign in again.');
  return s.access_token;
 }
@@ -48,7 +49,7 @@ async function storageRequest(path,blob){
 }
 async function deleteOrphan(path,id){
  try{
-  const status=await window.BBHistoryAdapter.rpc('bb_real_invoice_digital_status',{p_invoice_id:id});
+  const status=await api().rpc('bb_real_invoice_digital_status',{p_invoice_id:id});
   if(status.hasImage)return; // Never delete a registered image even if the response was interrupted.
   const token=await auth();
   await fetch(HOST+'/storage/v1/object/'+BUCKET+'/'+path,{
@@ -64,13 +65,13 @@ async function save(){
  let uploadedPath='';
  try{
   // Never use stale cached image or status to override an existing paper picture.
-  const freshStatus=await window.BBHistoryAdapter.rpc('bb_real_invoice_digital_status',{p_invoice_id:invoiceId});
+  const freshStatus=await api().rpc('bb_real_invoice_digital_status',{p_invoice_id:invoiceId});
   if(!freshStatus.eligible){
    if(active?.invoiceId===invoiceId)await refresh(active);
    throw Error(freshStatus.hasImage?'This invoice already has a picture. Digital save is blocked.':'Only unpaid credit invoices can have a Digital Original.');
   }
   // Capture the server's latest actual invoice, rather than any stale device preview.
-  const result=await window.BBHistoryAdapter.rpc('bb_sales_history_detail_by_id',{p_invoice_id:invoiceId});
+  const result=await api().rpc('bb_sales_history_detail_by_id',{p_invoice_id:invoiceId});
   const invoice=result?.invoice;
   if(!invoice||String(invoice.invoiceId)!==invoiceId||!eligibleLocal(invoice)){
    throw Error('Invoice has changed. Reopen its latest credit invoice detail.');
@@ -87,7 +88,7 @@ async function save(){
   btn.textContent='⏳ Uploading securely…';
   await storageRequest('/storage/v1/object/'+BUCKET+'/'+path,blob);
   uploadedPath=path;
-  const saved=await window.BBHistoryAdapter.rpc('bb_real_invoice_register_digital',
+  const saved=await api().rpc('bb_real_invoice_register_digital',
    {p_invoice_id:invoiceId,p_storage_path:path});
   if(!saved?.success)throw Error('Could not register the digital original.');
   uploadedPath='';
