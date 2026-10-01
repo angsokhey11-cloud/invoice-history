@@ -84,7 +84,7 @@
     const fitBody=html.toLowerCase().lastIndexOf('</body>');
     if(fitBody<0)throw Error('Invoice History body closing tag missing for preview fit.');
     html=html.slice(0,fitBody)
-      +'<scr'+'ipt src="history-desktop-fit-preview-v1.js?v=20261002-fitpreview1"></scr'+'ipt>'
+      +'<scr'+'ipt src="history-desktop-fit-preview-v1.js?v=20261002-headerbig2"></scr'+'ipt>'
       +html.slice(fitBody);
     
     document.open();document.write(html);document.close();
