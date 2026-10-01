@@ -27,14 +27,42 @@
     html=html.slice(0,headClose)+adapter+'\n'+html.slice(headClose);
 
     const marker='(async function initializeInvoiceHistory() {';
-    const replacement=`
-      fetchApi = window[${JSON.stringify(adapterObject)}].fetchApi;
-      historyJsonp = window[${JSON.stringify(adapterObject)}].historyJsonp;
-      postHistoryAction = window[${JSON.stringify(adapterObject)}].postHistoryAction;
-      requireHistoryPrimaryAdmin = window[${JSON.stringify(adapterObject)}].requirePrimaryAdmin;
-      ${marker}`;
+    const replacement=`${marker}
+      try {
+        // Initializing Invoice History must wait for its external adapter.
+        let adapter=null;
+        for(let i=0;i<60;i++){
+          adapter=window[${JSON.stringify(adapterObject)}];
+          if(adapter?.fetchApi)break;
+          await new Promise(resolve=>setTimeout(resolve,150));
+        }
+        if(!adapter?.fetchApi)throw Error("Invoice History database connection did not initialize.");
+        fetchApi=adapter.fetchApi;
+        historyJsonp=adapter.historyJsonp;
+        postHistoryAction=adapter.postHistoryAction;
+        requireHistoryPrimaryAdmin=adapter.requirePrimaryAdmin;
+        const originalMasterLookup=historyJsonp;
+        historyJsonp=async function(url,params){
+          if(params?.action!=="getLocations")return originalMasterLookup(url,params);
+          // A slow auxiliary location dropdown must not block the invoice list.
+          return Promise.race([originalMasterLookup(url,params),
+            new Promise(resolve=>setTimeout(()=>resolve([]),9000))]);
+        };
+      `;
     if(!html.includes(marker))throw new Error('Invoice History initialization marker was not found.');
     html=html.replace(marker,replacement);
+    const initTail='    startHistorySmartSync();\\n  })();';
+    if(!html.includes(initTail))throw Error('Invoice History final initialization marker missing.');
+    html=html.replace(initTail,
+      '    startHistorySmartSync();\\n  } catch(error) { console.error("Invoice History startup:",error);'+
+      ' const message=String(error?.message||error);'+
+      ' const loader=document.getElementById("loading");'+
+      ' if(loader)loader.textContent="Cannot load invoices: "+message;'+
+      ' const table=document.getElementById("invoiceBody");'+
+      ' if(table)table.innerHTML=\'<tr><td colspan="13" class="empty">Could not load Invoice History. Press Search to retry.</td></tr>\';'+
+      ' } })();'
+    );
+
 
     html=html.replaceAll('Sales Database','BIG BROTHER Database');
     html=html.replace('<title>BIG BROTHER — Invoice History Workspace</title>','<title>BIG BROTHER — Invoice History</title>');
