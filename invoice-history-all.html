@@ -84,6 +84,14 @@
     html=html.slice(0,finalBodyClose)
       +'<scr'+'ipt src="history-digital-original-v1.js?v=20261001-creditdigitalfix4"></scr'+'ipt>'
       +html.slice(finalBodyClose);
+    // Desktop-only fitted preview. Keep the original A4 document unchanged.
+    if(!mobileScope){
+    const fitBody=html.toLowerCase().lastIndexOf('</body>');
+    if(fitBody<0)throw Error('Invoice History body closing tag missing for preview fit.');
+    html=html.slice(0,fitBody)
+      +'<scr'+'ipt src="history-desktop-fit-preview-v1.js?v=20261002-fitpreview1"></scr'+'ipt>'
+      +html.slice(fitBody);
+    }
     document.open();document.write(html);document.close();
   }catch(error){
     console.error(error);
