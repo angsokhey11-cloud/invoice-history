@@ -107,4 +107,22 @@ async function save(){
  }
 }
 window.BBDigitalOriginal={refresh,save};
+// Attach only AFTER the core history page has initialized. A failure in this
+// optional feature must never stop the invoice list or the normal preview.
+function attachToHistory(){
+ const original=window.renderDetail;
+ if(typeof original!=='function'||original.__bbDigitalWrapped)return false;
+ const wrapped=function(invoice){
+  const result=original.apply(this,arguments);
+  Promise.resolve().then(()=>refresh(invoice)).catch(e=>console.warn('Digital Original:',e));
+  return result;
+ };
+ wrapped.__bbDigitalWrapped=true;
+ window.renderDetail=wrapped;
+ return true;
+}
+if(!attachToHistory()){
+ document.addEventListener('DOMContentLoaded',attachToHistory,{once:true});
+}
+
 })();
