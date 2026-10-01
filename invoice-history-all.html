@@ -77,7 +77,13 @@
 
 
 
-    html=html.replace('</body>', '<scr'+'ipt src="history-digital-original-v1.js?v=20261001-creditdigitalfix3"></scr'+'ipt></body>');
+    // The print-preview HTML also contains a literal </body> in a template.
+    // Insert at the document's LAST closing body tag, never inside its scripts.
+    const finalBodyClose=html.toLowerCase().lastIndexOf('</body>');
+    if(finalBodyClose<0)throw Error('Invoice History document body closing tag missing.');
+    html=html.slice(0,finalBodyClose)
+      +'<scr'+'ipt src="history-digital-original-v1.js?v=20261001-creditdigitalfix4"></scr'+'ipt>'
+      +html.slice(finalBodyClose);
     document.open();document.write(html);document.close();
   }catch(error){
     console.error(error);
