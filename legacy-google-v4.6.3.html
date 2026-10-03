@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BIG BROTHER — Invoice History Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- V4.6.3: Invoice History date display DD-Sep-YYYY, time removed; newest-to-oldest flow preserved -->
   <!-- V4.6.2: global dashboard navigation + clickable company brand -->
 
@@ -944,6 +946,10 @@
   min-width:112px!important;
 }
 
+
+/* Khmer readability for table values and invoice detail; preserve sizes/layout. */
+html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer',sans-serif}
+.table-wrap tbody td,.history-final-bill-detail-row,.history-final-signature-value,.history-final-desc{font-family:Arial,'Noto Sans Khmer',sans-serif;line-height:1.65;color:#243a56}
 </style>
 </head>
 
