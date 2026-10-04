@@ -957,7 +957,10 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
 
 <script>
   // If someone opens Invoice History directly, bring them into the permanent dashboard shell.
-  if (window.top === window.self) {
+  // Embedded exact-preview requests from other BIG BROTHER modules stay on this page.
+  const bbPreviewParams = new URLSearchParams(location.search);
+  const bbExactPreview = !!(bbPreviewParams.get("previewInvoiceNo") || bbPreviewParams.get("previewInvoiceId"));
+  if (window.top === window.self && !bbExactPreview) {
     const shellUrl = "https://angsokhey11-cloud.github.io/big-brother-dashboard/?module=history";
     if (location.href !== shellUrl) location.replace(shellUrl);
   }
