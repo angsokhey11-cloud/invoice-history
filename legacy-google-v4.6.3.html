@@ -2170,12 +2170,238 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
     }
 </style></head><body>${invoice.outerHTML}</body></html>`);win.document.close();win.onload=()=>setTimeout(()=>{win.focus();win.print();},250);}
 
-  async function createHistoryInvoiceImage(){if(typeof html2canvas!=="function")throw new Error("Image library is not loaded.");const invoice=getHistoryInvoiceElement();if(!invoice)throw new Error("Invoice is not ready.");const wrapper=document.createElement("div");wrapper.style.position="fixed";wrapper.style.left="-100000px";wrapper.style.top="0";wrapper.style.width="794px";wrapper.style.background="#fff";wrapper.style.zIndex="-1";const clone=invoice.cloneNode(true);clone.style.width="794px";clone.style.minWidth="794px";clone.style.maxWidth="794px";clone.style.minHeight="1123px";clone.style.margin="0";const exportStyle=document.createElement("style");exportStyle.textContent=".history-final-desc,.history-final-qty-unit,.history-final-table td:nth-child(4),.history-final-table td:nth-child(5){font-size:15px!important;font-weight:400!important;line-height:1.35!important}.history-final-barcode,.history-final-product-note{font-size:11.5px!important;font-weight:400!important;line-height:1.4!important}.history-final-unit-small{font-size:11px!important;font-weight:400!important;color:#5d6672!important;vertical-align:baseline!important;margin-left:2px!important}";clone.prepend(exportStyle);wrapper.appendChild(clone);document.body.appendChild(wrapper);try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));const canvas=await html2canvas(clone,{backgroundColor:"#ffffff",scale:2,useCORS:true,logging:false,width:794,height:Math.max(1123,clone.scrollHeight),windowWidth:1200,windowHeight:1400,scrollX:0,scrollY:0});return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Could not create invoice image.")),"image/png"))}finally{wrapper.remove();}}
+  async function createHistoryInvoiceImages(){
+    if(typeof html2canvas!=="function")throw new Error("Image library is not loaded.");
+    const invoice=getHistoryInvoiceElement();
+    if(!invoice)throw new Error("Invoice is not ready.");
+
+    const PAGE_WIDTH=794;
+    const PAGE_HEIGHT=1123;
+    const SCALE=2;
+
+    const wrapper=document.createElement("div");
+    wrapper.style.position="fixed";
+    wrapper.style.left="-100000px";
+    wrapper.style.top="0";
+    wrapper.style.width=PAGE_WIDTH+"px";
+    wrapper.style.background="#fff";
+    wrapper.style.zIndex="-1";
+
+    const clone=invoice.cloneNode(true);
+    clone.style.width=PAGE_WIDTH+"px";
+    clone.style.minWidth=PAGE_WIDTH+"px";
+    clone.style.maxWidth=PAGE_WIDTH+"px";
+    clone.style.minHeight=PAGE_HEIGHT+"px";
+    clone.style.margin="0";
+
+    const exportStyle=document.createElement("style");
+    exportStyle.textContent=
+      ".history-final-desc,.history-final-qty-unit,.history-final-table td:nth-child(4),.history-final-table td:nth-child(5){font-size:15px!important;font-weight:400!important;line-height:1.35!important}"+
+      ".history-final-barcode,.history-final-product-note{font-size:11.5px!important;font-weight:400!important;line-height:1.4!important}"+
+      ".history-final-unit-small{font-size:11px!important;font-weight:400!important;color:#5d6672!important;vertical-align:baseline!important;margin-left:2px!important}";
+    clone.prepend(exportStyle);
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    try{
+      if(document.fonts&&document.fonts.ready)await document.fonts.ready;
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+
+      const fullHeight=Math.max(PAGE_HEIGHT,clone.scrollHeight);
+      const canvas=await html2canvas(clone,{
+        backgroundColor:"#ffffff",
+        scale:SCALE,
+        useCORS:true,
+        logging:false,
+        width:PAGE_WIDTH,
+        height:fullHeight,
+        windowWidth:1200,
+        windowHeight:Math.max(1400,fullHeight),
+        scrollX:0,
+        scrollY:0
+      });
+
+      const toBlob=c=>new Promise((resolve,reject)=>
+        c.toBlob(blob=>blob?resolve(blob):reject(new Error("Could not create invoice image.")),"image/png")
+      );
+
+      if(fullHeight<=PAGE_HEIGHT+1){
+        return [await toBlob(canvas)];
+      }
+
+      const rootRect=clone.getBoundingClientRect();
+      const protectedNodes=[
+        ...clone.querySelectorAll(".history-final-table tr"),
+        ...clone.querySelectorAll(".history-final-bottom-grid,.history-final-payment-box,.history-final-bank,.history-final-signature-grid")
+      ];
+      const protectedRanges=protectedNodes.map(el=>{
+        const r=el.getBoundingClientRect();
+        return {
+          top:Math.max(0,r.top-rootRect.top),
+          bottom:Math.min(fullHeight,r.bottom-rootRect.top)
+        };
+      }).filter(r=>r.bottom>r.top).sort((a,b)=>a.top-b.top);
+
+      function safeCut(pageStart,target){
+        let cut=Math.min(target,fullHeight);
+        const minUseful=pageStart+PAGE_HEIGHT*.55;
+        for(const range of protectedRanges){
+          if(range.top<cut&&range.bottom>cut){
+            if(range.top>=minUseful){
+              cut=range.top;
+            }else if(range.bottom<=pageStart+PAGE_HEIGHT){
+              cut=range.bottom;
+            }
+            break;
+          }
+        }
+        if(cut<=pageStart+80)cut=Math.min(pageStart+PAGE_HEIGHT,fullHeight);
+        return cut;
+      }
+
+      const cuts=[0];
+      let pageStart=0;
+      while(pageStart<fullHeight-1){
+        let next=Math.min(pageStart+PAGE_HEIGHT,fullHeight);
+        if(next<fullHeight)next=safeCut(pageStart,next);
+        if(next<=pageStart)next=Math.min(pageStart+PAGE_HEIGHT,fullHeight);
+        cuts.push(next);
+        pageStart=next;
+      }
+
+      const pages=[];
+      for(let i=0;i<cuts.length-1;i++){
+        const logicalStart=cuts[i];
+        const logicalEnd=cuts[i+1];
+        const logicalHeight=Math.max(1,logicalEnd-logicalStart);
+
+        const page=document.createElement("canvas");
+        page.width=PAGE_WIDTH*SCALE;
+        page.height=PAGE_HEIGHT*SCALE;
+        const ctx=page.getContext("2d");
+        ctx.fillStyle="#fff";
+        ctx.fillRect(0,0,page.width,page.height);
+        ctx.drawImage(
+          canvas,
+          0,Math.round(logicalStart*SCALE),
+          PAGE_WIDTH*SCALE,Math.round(logicalHeight*SCALE),
+          0,0,
+          PAGE_WIDTH*SCALE,Math.round(logicalHeight*SCALE)
+        );
+        pages.push(await toBlob(page));
+      }
+      return pages;
+    }finally{
+      wrapper.remove();
+    }
+  }
+
+  async function createHistoryInvoiceImage(){
+    const pages=await createHistoryInvoiceImages();
+    return pages[0];
+  }
+
   function historySafeFileName(value,fallback){return String(value||fallback||"Invoice").replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||fallback||"Invoice";}
 
-  async function saveHistoryInvoiceToDevice(event){if(event){event.preventDefault();event.stopPropagation();}const button=event?.currentTarget,oldText=button?.innerHTML||"";try{if(button){button.disabled=true;button.innerHTML="⏳ Preparing...";}const blob=await createHistoryInvoiceImage();const invoiceNo=currentHistoryInvoice?.invoiceNo||"Invoice";const date=historyDate(currentHistoryInvoice?.invoiceDate||"");const fileName=`BIG-BROTHER-${historySafeFileName(invoiceNo,"Invoice")}-${historySafeFileName(date,"Date")}.png`;const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=fileName;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}catch(error){console.error("Invoice image save failed:",error);alert("Could not save the invoice picture. Please try again.");}finally{if(button){button.disabled=false;button.innerHTML=oldText;}}}
+  function downloadHistoryInvoicePages(blobs,baseName){
+    const many=blobs.length>1;
+    blobs.forEach((blob,index)=>{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;
+      a.download=many?`${baseName}-Page-${index+1}.png`:`${baseName}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),5000+index*250);
+    });
+  }
 
-  async function shareHistoryInvoiceToTelegram(event){if(event){event.preventDefault();event.stopPropagation();}const button=event?.currentTarget,oldText=button?.innerHTML||"";try{if(button){button.disabled=true;button.innerHTML="⏳ Preparing...";}const blob=await createHistoryInvoiceImage();const invoiceNo=currentHistoryInvoice?.invoiceNo||"Invoice";const customer=currentHistoryInvoice?.customer||"Customer";const safeInvoice=historySafeFileName(invoiceNo,"Invoice");const file=new File([blob],`BIG-BROTHER-${safeInvoice}.png`,{type:"image/png"});const text=`BIG BROTHER Invoice ${invoiceNo}\nCustomer: ${customer}`;const mobileDevice=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);const touchDevice="ontouchstart" in window||navigator.maxTouchPoints>0;const isMobile=mobileDevice||touchDevice;if(isMobile){if(!navigator.share){alert("Your browser does not support sharing invoice pictures. Please use Chrome or Safari with Telegram installed.");return;}try{if(navigator.canShare&&!navigator.canShare({files:[file]}))throw new Error("This browser cannot share image files.");await navigator.share({files:[file],title:"BIG BROTHER Invoice"});return;}catch(e){if(e?.name==="AbortError")return;console.warn("Image share failed:",e);}try{await navigator.share({title:"BIG BROTHER Invoice",text,files:[file]});return;}catch(e){if(e?.name==="AbortError")return;console.warn("Combined share failed:",e);}try{await navigator.share({title:"BIG BROTHER Invoice",text});return;}catch(e){if(e?.name==="AbortError")return;throw e;}}if(navigator.clipboard&&window.ClipboardItem){try{await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);window.open("https://web.telegram.org/","_blank","noopener");alert("Invoice picture copied. Open the customer chat in Telegram and press Ctrl+V.");return;}catch(e){console.warn("Clipboard image copy failed:",e);}}const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`BIG-BROTHER-${safeInvoice}.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);window.open("https://web.telegram.org/","_blank","noopener");alert("Invoice picture saved. Attach the saved picture in Telegram.");}catch(error){if(error?.name==="AbortError")return;console.error("Telegram share failed:",error);alert("Could not share the invoice picture. Please try again.");}finally{if(button){button.disabled=false;button.innerHTML=oldText;}}}
+  async function saveHistoryInvoiceToDevice(event){
+    if(event){event.preventDefault();event.stopPropagation();}
+    const button=event?.currentTarget,oldText=button?.innerHTML||"";
+    try{
+      if(button){button.disabled=true;button.innerHTML="⏳ Preparing...";}
+      const blobs=await createHistoryInvoiceImages();
+      const invoiceNo=currentHistoryInvoice?.invoiceNo||"Invoice";
+      const date=historyDate(currentHistoryInvoice?.invoiceDate||"");
+      const baseName=`BIG-BROTHER-${historySafeFileName(invoiceNo,"Invoice")}-${historySafeFileName(date,"Date")}`;
+      downloadHistoryInvoicePages(blobs,baseName);
+      if(blobs.length>1)alert(`Long invoice prepared as ${blobs.length} readable image pages.`);
+    }catch(error){
+      console.error("Invoice image save failed:",error);
+      alert("Could not save the invoice picture. Please try again.");
+    }finally{
+      if(button){button.disabled=false;button.innerHTML=oldText;}
+    }
+  }
+
+  async function shareHistoryInvoiceToTelegram(event){
+    if(event){event.preventDefault();event.stopPropagation();}
+    const button=event?.currentTarget,oldText=button?.innerHTML||"";
+    try{
+      if(button){button.disabled=true;button.innerHTML="⏳ Preparing...";}
+      const blobs=await createHistoryInvoiceImages();
+      const invoiceNo=currentHistoryInvoice?.invoiceNo||"Invoice";
+      const customer=currentHistoryInvoice?.customer||"Customer";
+      const safeInvoice=historySafeFileName(invoiceNo,"Invoice");
+      const files=blobs.map((blob,index)=>new File(
+        [blob],
+        blobs.length>1?`BIG-BROTHER-${safeInvoice}-Page-${index+1}.png`:`BIG-BROTHER-${safeInvoice}.png`,
+        {type:"image/png"}
+      ));
+      const text=`BIG BROTHER Invoice ${invoiceNo}\nCustomer: ${customer}`;
+      const mobileDevice=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      const touchDevice="ontouchstart" in window||navigator.maxTouchPoints>0;
+      const isMobile=mobileDevice||touchDevice;
+
+      if(isMobile){
+        if(!navigator.share){
+          alert("Your browser does not support sharing invoice pictures. Please use Chrome or Safari with Telegram installed.");
+          return;
+        }
+        try{
+          if(navigator.canShare&&!navigator.canShare({files}))throw new Error("This browser cannot share image files.");
+          await navigator.share({files,title:"BIG BROTHER Invoice",text});
+          return;
+        }catch(e){
+          if(e?.name==="AbortError")return;
+          console.warn("Multi-page image share failed:",e);
+        }
+        try{
+          await navigator.share({title:"BIG BROTHER Invoice",text});
+          return;
+        }catch(e){
+          if(e?.name==="AbortError")return;
+          throw e;
+        }
+      }
+
+      if(files.length===1&&navigator.clipboard&&window.ClipboardItem){
+        try{
+          await navigator.clipboard.write([new ClipboardItem({"image/png":blobs[0]})]);
+          window.open("https://web.telegram.org/","_blank","noopener");
+          alert("Invoice picture copied. Open the customer chat in Telegram and press Ctrl+V.");
+          return;
+        }catch(e){
+          console.warn("Clipboard image copy failed:",e);
+        }
+      }
+
+      downloadHistoryInvoicePages(blobs,`BIG-BROTHER-${safeInvoice}`);
+      window.open("https://web.telegram.org/","_blank","noopener");
+      alert(blobs.length>1
+        ? `Invoice saved as ${blobs.length} image pages. Attach all pages in Telegram.`
+        : "Invoice picture saved. Attach the saved picture in Telegram."
+      );
+    }catch(error){
+      if(error?.name==="AbortError")return;
+      console.error("Telegram share failed:",error);
+      alert("Could not share the invoice picture. Please try again.");
+    }finally{
+      if(button){button.disabled=false;button.innerHTML=oldText;}
+    }
+  }
 
 
   function closeRowActions(){
