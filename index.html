@@ -10,12 +10,12 @@
 <script>
 (async function(){
   try{
-    const r=await fetch('legacy-google-v4.6.3.html?v=20261001-creditdigitalfix3',{cache:'no-store'});
+    const r=await fetch('legacy-google-v4.6.3.html?v=20261004-clean-embed-preview1',{cache:'no-store'});
     if(!r.ok)throw new Error('Could not load Invoice History source.');
     let html=await r.text();
 
     // Load the Supabase adapter before the legacy page scripts execute.
-    const adapter='<scr'+'ipt src="supabase-history-adapter.js?v=20261001-creditdigitalfix3"></scr'+'ipt>';
+    const adapter='<scr'+'ipt src="supabase-history-adapter.js?v=20261004-clean-embed-preview1"></scr'+'ipt>';
     const headClose=html.toLowerCase().indexOf('</head>');
     if(headClose<0)throw new Error('Invoice History source is missing </head>.');
     html=html.slice(0,headClose)+adapter+'\n'+html.slice(headClose);
@@ -79,6 +79,26 @@
     html=html.slice(0,finalBodyClose)
       +'<scr'+'ipt src="history-digital-original-v1.js?v=20261001-creditdigitalfix4"></scr'+'ipt>'
       +html.slice(finalBodyClose);
+    // Exact preview mode: Batch Selling Tracker already supplies the outer modal.
+    // Strip Invoice History's own page/modal chrome so only the live invoice is visible.
+    const exactPreviewParams=new URLSearchParams(location.search);
+    const exactPreviewMode=!!(exactPreviewParams.get('previewInvoiceNo')||exactPreviewParams.get('previewInvoiceId'));
+    if(exactPreviewMode){
+      const exactHead=html.toLowerCase().lastIndexOf('</head>');
+      if(exactHead<0)throw Error('Invoice History head missing for exact preview mode.');
+      const exactCss='<style id="bbExactPreviewStyle">'
+        +'html,body{margin:0!important;min-height:100%!important;background:#eef3f8!important;overflow:auto!important}'
+        +'.main,.sidebar,#floatingActionMenu,#editModal{display:none!important}'
+        +'#detailModal.modal{position:static!important;inset:auto!important;display:block!important;background:transparent!important;padding:0!important;overflow:visible!important;z-index:auto!important}'
+        +'#detailModal .modal-card{width:100%!important;max-width:none!important;max-height:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;overflow:visible!important}'
+        +'#detailModal .modal-head,.history-invoice-actions{display:none!important}'
+        +'#detailLoading{min-height:240px!important;display:flex;align-items:center;justify-content:center;background:#eef3f8!important}'
+        +'#detailContent{margin:0!important;padding:0!important}'
+        +'.history-invoice-wrap{padding:10px!important;background:#eef3f8!important;overflow:hidden!important}'
+        +'</style>';
+      html=html.slice(0,exactHead)+exactCss+html.slice(exactHead);
+    }
+
     // Allow other BIG BROTHER modules to open the existing live Invoice History preview directly.
     // No preview image is generated or stored by this route.
     const directPreviewBody=html.toLowerCase().lastIndexOf('</body>');
