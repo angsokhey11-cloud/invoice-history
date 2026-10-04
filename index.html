@@ -79,6 +79,14 @@
     html=html.slice(0,finalBodyClose)
       +'<scr'+'ipt src="history-digital-original-v1.js?v=20261001-creditdigitalfix4"></scr'+'ipt>'
       +html.slice(finalBodyClose);
+    // Allow other BIG BROTHER modules to open the existing live Invoice History preview directly.
+    // No preview image is generated or stored by this route.
+    const directPreviewBody=html.toLowerCase().lastIndexOf('</body>');
+    if(directPreviewBody<0)throw Error('Invoice History body closing tag missing for direct preview.');
+    html=html.slice(0,directPreviewBody)
+      +'<scr'+'ipt>(function(){const p=new URLSearchParams(location.search);const no=p.get("previewInvoiceNo")||"";const id=p.get("previewInvoiceId")||"";if(!no&&!id)return;let tries=0;const timer=setInterval(()=>{tries++;if(typeof window.openDetail==="function"){clearInterval(timer);window.openDetail(no,id);return;}if(tries>=120)clearInterval(timer);},150);})();</scr'+'ipt>'
+      +html.slice(directPreviewBody);
+
     // Desktop-only fitted preview. Keep the original A4 document unchanged.
     
     const fitBody=html.toLowerCase().lastIndexOf('</body>');
