@@ -1125,8 +1125,8 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
         <div class="edit-field" id="editSplitBankRow" style="display:none;"><label>Bank Amount</label><input id="editSplitBankAmount" type="number" min="0" step="0.01" inputmode="decimal" oninput="syncEditSplitFrom('bank')"></div>
         <div class="edit-field edit-span-2" id="editSplitHelpRow" style="display:none;"><div id="editSplitHelp" style="font-size:12px;font-weight:800;color:#667085;padding:8px 10px;background:#f5f8fc;border:1px solid #d9e2ef;border-radius:8px;">Cash + Bank must equal Grand Total.</div></div>
         <div class="edit-field"><label>Due Date</label><input id="editDueDate" type="date"></div>
-        <div class="edit-field"><label>Bank Payment</label><input id="editBankPayment"></div>
-        <div class="edit-field"><label>Bank Reference</label><input id="editBankReference"></div>
+        <div class="edit-field" id="editBankPaymentRow"><label>Bank Payment</label><input id="editBankPayment" placeholder="e.g. ABA"></div>
+        <div class="edit-field" id="editBankTransactionRow"><label>Bank Transaction ID</label><input id="editBankReference" autocomplete="off" placeholder="Enter bank transaction ID"></div>
         <div class="edit-field"><label>Batch Number</label><input id="editBatchNumber" readonly title="Batch routing stays linked to the original Batch."></div>
         <div class="edit-field edit-span-2"><label>Note</label><textarea id="editNote"></textarea></div>
       </div>
@@ -2644,7 +2644,7 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
     $("editAmountPaid").value=numberValue(invoice.amountPaid);
     $("editDueDate").value=isoDateOnly(invoice.dueDate);
     $("editBankPayment").value=invoice.bankPayment||"";
-    $("editBankReference").value=invoice.bankReference||"";
+    $("editBankReference").value=invoice.transactionId||invoice.bankReference||"";
 
     const originalInvoicePayments=(Array.isArray(invoice.payments)?invoice.payments:[])
       .filter(p=>String(p?.paymentSource||"").trim().toLowerCase()==="invoice");
@@ -2664,6 +2664,7 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
         ? existingSplitBank.toFixed(2)
         : "";
     $("editPaymentMethod").dataset.previousMethod=invoice.paymentMethod||"Cash";
+    updateEditBankFieldsVisibility();
 
     $("editBatchNumber").value=invoice.batchNumber||invoice.batchId||"";
     $("editNote").value=invoice.note||"";
@@ -2710,6 +2711,20 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
     }
   }
 
+  function updateEditBankFieldsVisibility(){
+    const method=String($("editPaymentMethod")?.value||"");
+    const usesBank=
+      method==="Bank" ||
+      method==="Partially Paid in Bank" ||
+      method==="Cash + Bank";
+
+    const bankRow=$("editBankPaymentRow");
+    const txRow=$("editBankTransactionRow");
+
+    if(bankRow)bankRow.style.display=usesBank?"":"none";
+    if(txRow)txRow.style.display=usesBank?"":"none";
+  }
+
   function handleEditPaymentMethodChange(){
     const select=$("editPaymentMethod");
     if(!select)return;
@@ -2728,6 +2743,7 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
     }
 
     select.dataset.previousMethod=next;
+    updateEditBankFieldsVisibility();
     recalcEditInvoice();
   }
 
@@ -2852,6 +2868,7 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
       dueDate:$("editDueDate").value,
       bankPayment:$("editBankPayment").value.trim(),
       bankReference:$("editBankReference").value.trim(),
+      transactionId:$("editBankReference").value.trim(),
       batchNumber:$("editBatchNumber").value.trim(),
       note:$("editNote").value.trim(),
       items
@@ -2909,13 +2926,13 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
         return;
       }
       if(!payload.bankReference){
-        alert("Please enter the Bank Reference / Transaction ID for the Bank portion.");
+        alert("Please enter the Bank Transaction ID for the Bank portion.");
         return;
       }
     }
 
     if(payload.paymentMethod==="Bank"&&(!payload.bankPayment||!payload.bankReference)){
-      alert("Bank Payment and Bank Reference / Transaction ID are required for Bank payment.");
+      alert("Bank Payment and Bank Transaction ID are required for Bank payment.");
       return;
     }
 
