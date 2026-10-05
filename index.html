@@ -77,7 +77,7 @@
     const finalBodyClose=html.toLowerCase().lastIndexOf('</body>');
     if(finalBodyClose<0)throw Error('Invoice History document body closing tag missing.');
     html=html.slice(0,finalBodyClose)
-      +'<scr'+'ipt src="history-digital-original-v1.js?v=20261001-creditdigitalfix4"></scr'+'ipt>'
+      +'<scr'+'ipt src="history-digital-original-v1.js?v=20261005-digital-auth2"></scr'+'ipt>'
       +html.slice(finalBodyClose);
     // Exact preview mode: Batch Selling Tracker already supplies the outer modal.
     // Strip Invoice History's own page/modal chrome so only the live invoice is visible.
