@@ -223,6 +223,6 @@
     return false;
   }
 
-  window.BBHistoryAdapter={rpc,fetchApi,historyJsonp,postHistoryAction,requirePrimaryAdmin,syncInvoiceIdToSheet,retrySheetQueue,catchUpPriorCorrections};
+  window.BBHistoryAdapter={rpc,fetchApi,historyJsonp,postHistoryAction,requirePrimaryAdmin,ensureSession,syncInvoiceIdToSheet,retrySheetQueue,catchUpPriorCorrections};
   setTimeout(()=>{retrySheetQueue().catch(()=>{});catchUpPriorCorrections().catch(()=>{});},1200);
 })();
