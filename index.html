@@ -22,7 +22,9 @@
     const adapter='<scr'+'ipt src="supabase-history-adapter.js?v=20261005-digital-session1"></scr'+'ipt>';
     const headClose=html.toLowerCase().indexOf('</head>');
     if(headClose<0)throw new Error('Invoice History source is missing </head>.');
-    html=html.slice(0,headClose)+adapter+'\n'+html.slice(headClose);
+    html=html.slice(0,headClose)+adapter+'\n'
+      +'<scr'+'ipt src="https://angsokhey11-cloud.github.io/big-brother-dashboard/bb-system-dialog-v1.js?v=20261005-dialog1"></scr'+'ipt>\n'
+      +html.slice(headClose);
 
     // Rebind database functions immediately before the page initializes.
     const marker='(async function initializeInvoiceHistory() {';
