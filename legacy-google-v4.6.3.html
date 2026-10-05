@@ -2978,7 +2978,7 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
       "Save this correction?"
     ].join("\n");
 
-    if(!confirm(warning))return;
+    if(!(await (window.bbConfirm?window.bbConfirm(warning,{title:"Confirm Invoice Correction",okText:"Save Correction",cancelText:"Cancel"}):Promise.resolve(confirm(warning)))))return;
 
     const btn=$("editSaveBtn");
     const old=btn.innerHTML;
@@ -3028,9 +3028,16 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
   }
 
   async function deleteInvoiceFromHistory(invoiceNo){
-    const typed=prompt("DELETE INVOICE\n\nThis will remove the invoice, its Invoice Item row, and related Payment/Return rows.\n\nType the Invoice No. to confirm:\n"+invoiceNo);
+    const deleteMessage="This will remove the invoice, its Invoice Item row, and related Payment/Return rows.\n\nType the Invoice No. to confirm:\n"+invoiceNo;
+    const typed=window.bbPrompt
+      ? await window.bbPrompt(deleteMessage,{title:"Delete Invoice",okText:"Continue",cancelText:"Cancel",placeholder:invoiceNo})
+      : prompt("DELETE INVOICE\n\n"+deleteMessage);
     if(typed===null)return;if(String(typed).trim().toLowerCase()!==String(invoiceNo).trim().toLowerCase()){alert("Invoice No. did not match. Nothing was deleted.");return;}
-    if(!confirm("Final confirmation: permanently delete "+invoiceNo+"?"))return;
+    const finalMessage="Permanently delete "+invoiceNo+"?";
+    const finalOk=window.bbConfirm
+      ? await window.bbConfirm(finalMessage,{title:"Final Confirmation",okText:"Delete Invoice",cancelText:"Cancel"})
+      : confirm("Final confirmation: "+finalMessage);
+    if(!finalOk)return;
     try{await postHistoryAction("deleteInvoice","deleteData",{invoiceNo,adminCode:historyPrimaryAdminCode});await loadInvoices();alert("Delete request for "+invoiceNo+" was sent to Sales Database.");}catch(error){alert("Could not delete invoice.\n\n"+(error.message||"Please try again."));}
   }
 
