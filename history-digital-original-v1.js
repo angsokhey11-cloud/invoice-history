@@ -96,7 +96,11 @@ async function save(){
   if(active?.invoiceId!==invoiceId||!document.getElementById('detailModal')?.classList.contains('show'))
    throw Error('Invoice preview is no longer open.');
   window.renderDetail(invoice);
-  if(!window.confirm('Save this CREDIT invoice preview as its Digital Original?\n\nUse this only when there is NO paper invoice. After saving, it will leave Pending Scan. An existing paper photo can never be overwritten here.'))return;
+  const digitalMessage='Save this CREDIT invoice preview as its Digital Original?\n\nUse this only when there is NO paper invoice. After saving, it will leave Pending Scan. An existing paper photo can never be overwritten here.';
+  const digitalOk=window.bbConfirm
+   ? await window.bbConfirm(digitalMessage,{title:'Save Digital Original',okText:'Save Digital Original',cancelText:'Cancel'})
+   : window.confirm(digitalMessage);
+  if(!digitalOk)return;
   btn.textContent='⏳ Capturing invoice…';
   const blob=await window.createHistoryInvoiceImage();
   if(blob.type!=='image/png'||!blob.size)throw Error('Could not create the invoice PNG.');
