@@ -13,7 +13,7 @@
     const r=await fetch('legacy-google-v4.6.3.html?v=20261004-bank-transaction1',{cache:'no-store'});
     if(!r.ok)throw new Error('Could not load Invoice History source.');
     let html=await r.text();
-    const digitalResponse=await fetch('history-digital-original-v1.js?v=20261005-digital-inline1',{cache:'no-store'});
+    const digitalResponse=await fetch('history-digital-original-v1.js?v=20261005-digital-dialog1',{cache:'no-store'});
     if(!digitalResponse.ok)throw new Error('Could not load Digital Original helper.');
     const digitalJs=await digitalResponse.text();
 
@@ -23,7 +23,7 @@
     const headClose=html.toLowerCase().indexOf('</head>');
     if(headClose<0)throw new Error('Invoice History source is missing </head>.');
     html=html.slice(0,headClose)+adapter+'\n'
-      +'<scr'+'ipt src="https://angsokhey11-cloud.github.io/big-brother-dashboard/bb-system-dialog-v1.js?v=20261005-dialog1"></scr'+'ipt>\n'
+      +'<scr'+'ipt src="https://angsokhey11-cloud.github.io/big-brother-dashboard/bb-system-dialog-v1.js?v=20261005-dialog2"></scr'+'ipt>\n'
       +html.slice(headClose);
 
     // Rebind database functions immediately before the page initializes.
