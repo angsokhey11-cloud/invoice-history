@@ -59,6 +59,17 @@
     );
 
 
+    // Allow a real standalone Invoice History URL for troubleshooting/admin work.
+    // The legacy source normally redirects top-level opens back to Dashboard.
+    html=html.replace(
+      'const bbExactPreview = !!(bbPreviewParams.get("previewInvoiceNo") || bbPreviewParams.get("previewInvoiceId"));',
+      'const bbExactPreview = !!(bbPreviewParams.get("previewInvoiceNo") || bbPreviewParams.get("previewInvoiceId")); const bbStandalone = bbPreviewParams.get("standalone")==="1";'
+    );
+    html=html.replace(
+      'if (window.top === window.self && !bbExactPreview) {',
+      'if (window.top === window.self && !bbExactPreview && !bbStandalone) {'
+    );
+
     html=html.replaceAll('Sales Database','BIG BROTHER Database');
     html=html.replace('<title>BIG BROTHER — Invoice History Workspace</title>','<title>BIG BROTHER — Invoice History Supabase</title>');
 
@@ -77,7 +88,7 @@
     const finalBodyClose=html.toLowerCase().lastIndexOf('</body>');
     if(finalBodyClose<0)throw Error('Invoice History document body closing tag missing.');
     html=html.slice(0,finalBodyClose)
-      +'<scr'+'ipt src="history-digital-original-v1.js?v=20261005-digital-auth2"></scr'+'ipt>'
+      +'<scr'+'ipt src="history-digital-original-v1.js?v=20261005-digital-auth3"></scr'+'ipt>'
       +html.slice(finalBodyClose);
     // Exact preview mode: Batch Selling Tracker already supplies the outer modal.
     // Strip Invoice History's own page/modal chrome so only the live invoice is visible.
