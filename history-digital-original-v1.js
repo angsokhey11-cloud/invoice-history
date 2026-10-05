@@ -33,7 +33,23 @@ async function refresh(invoice){
  }catch(e){if(request===serial){console.warn('Original status:',e);showStatus('Invoice image status unavailable. Try reopening this invoice.')}}
 }
 async function auth(){
- const s=await api().ensureSession();
+ const a=api();
+ if(a?.ensureSession){
+  const s=await a.ensureSession();
+  if(!s?.access_token)throw Error('Please sign in again.');
+  return s.access_token;
+ }
+ // Digital Original must not depend on every History adapter exporting
+ // ensureSession. Read the same signed-in BIG BROTHER session directly.
+ let s=null;
+ try{s=JSON.parse(localStorage.getItem('BB_SUPABASE_DEV_SESSION_V1')||'null')}catch(_){}
+ if(!s?.access_token)throw Error('Please sign in again.');
+ // RPC calls already refresh expired sessions. If needed, make one harmless
+ // authenticated RPC first, then re-read the refreshed session.
+ if(s.expires_at&&Number(s.expires_at)<Math.floor(Date.now()/1000)+30){
+  await a.rpc('bb_real_invoice_digital_status',{p_invoice_id:String(active?.invoiceId||'')});
+  try{s=JSON.parse(localStorage.getItem('BB_SUPABASE_DEV_SESSION_V1')||'null')}catch(_){}
+ }
  if(!s?.access_token)throw Error('Please sign in again.');
  return s.access_token;
 }
