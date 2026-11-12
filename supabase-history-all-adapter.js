@@ -200,7 +200,9 @@
 
   async function postHistoryAction(action,_fieldName,payload){
     if(action==='updateInvoice'){
-      const result=await rpc('bb_sales_history_update_invoice',{p_payload:payload||{}});
+      const result=await rpc(payload?.useRegisteredBankBalance===true
+        ?'bb_sales_history_update_invoice_registered_wallet_v1'
+        :'bb_sales_history_update_invoice',{p_payload:payload||{}});
       const invoiceId=clean(result?.invoiceId||payload?.invoiceId);
       try{
         await syncInvoiceIdToSheet(invoiceId,'syncInvoiceCorrection');
