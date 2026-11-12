@@ -19,7 +19,7 @@
 
 
     // Load the Supabase adapter before the legacy page scripts execute.
-    const adapter='<scr'+'ipt src="supabase-history-adapter.js?v=20261005-digital-session1"></scr'+'ipt>';
+    const adapter='<scr'+'ipt src="supabase-history-adapter.js?v=20261112-wallet1"></scr'+'ipt>';
     const headClose=html.toLowerCase().indexOf('</head>');
     if(headClose<0)throw new Error('Invoice History source is missing </head>.');
     html=html.slice(0,headClose)+adapter+'\n'
@@ -138,6 +138,14 @@
       +'<scr'+'ipt src="history-desktop-fit-preview-v1.js?v=20261002-headerbig2"></scr'+'ipt>'
       +html.slice(fitBody);
     
+    // Admin registered-bank wallet picker shares Invoice Generator balances
+    // but uses its own atomic correction RPC, never a payment-label-only edit.
+    const walletBody=html.toLowerCase().lastIndexOf('</body>');
+    if(walletBody<0)throw Error('Invoice History closing body is missing for bank wallet picker.');
+    html=html.slice(0,walletBody)
+      +'<scr'+'ipt src="invoice-history-registered-wallet-v1.js?v=20261112-wallet1"></scr'+'ipt>'
+      +html.slice(walletBody);
+
     document.open();document.write(html);document.close();
   }catch(error){
     console.error(error);
