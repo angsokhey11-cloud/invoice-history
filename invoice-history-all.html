@@ -97,7 +97,7 @@
     const walletBody=html.toLowerCase().lastIndexOf('</body>');
     if(walletBody<0)throw Error('Invoice History closing body is missing for bank wallet picker.');
     html=html.slice(0,walletBody)
-      +'<scr'+'ipt src="invoice-history-registered-wallet-v1.js?v=20261112-wallet1"></scr'+'ipt>'
+      +'<scr'+'ipt src="invoice-history-registered-wallet-v1.js?v=20261112-wallet2"></scr'+'ipt>'
       +html.slice(walletBody);
 
     document.open();document.write(html);document.close();
