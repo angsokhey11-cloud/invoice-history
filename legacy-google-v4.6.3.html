@@ -2968,6 +2968,10 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
       payload.paymentMethod==="Cash + Bank"
         ?"Split: Cash "+payload.splitCashAmount+" + Bank "+payload.splitBankAmount
         :"",
+      payload.useRegisteredBankBalance
+        ?"Registered Bank Balance: "+payload.transactionId+
+           " will be debited once for this customer's invoice."
+        :"",
       qtyChanged
         ? "Stock: rebuild this invoice's original sale using the corrected QTY."
         : "Stock: no QTY rebuild needed.",
