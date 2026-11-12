@@ -174,7 +174,7 @@ function hook(){
  if(typeof window.openEditInvoice==='function'&&!window.openEditInvoice.__bbHistoryBankWallet){
   const orig=window.openEditInvoice;
   const wrapped=async function(...args){++seq;rows=[];reset();const value=await orig.apply(this,args);visible();if(bankMode())void load();return value};
-  wrapped.__bbHistoryBankWallet=true;window.openEditInvoice=wrapped;
+  wrapped.__bbHistoryBankWallet=true;wrapped.__bbAddProductWrapped=Boolean(orig.__bbAddProductWrapped);window.openEditInvoice=wrapped;
  }
  if(typeof window.closeEditInvoice==='function'&&!window.closeEditInvoice.__bbHistoryBankWallet){
   const orig=window.closeEditInvoice;
@@ -200,7 +200,7 @@ function hook(){
    }
    return payload;
   };
-  wrapped.__bbHistoryBankWallet=true;window.buildEditPayload=wrapped;
+  wrapped.__bbHistoryBankWallet=true;wrapped.__bbAddProductWrapped=Boolean(orig.__bbAddProductWrapped);window.buildEditPayload=wrapped;
  }
 }
 function boot(){install();hook();setTimeout(hook,450);setTimeout(hook,1250)}
