@@ -9,7 +9,7 @@ const clean=v=>String(v??'').trim();
 const num=v=>Number(v)||0;
 const money=(n,c)=>Number(n).toLocaleString('en-US',{minimumFractionDigits:c==='KHR'?0:2,maximumFractionDigits:c==='KHR'?0:2});
 const month=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-let rows=[],selected=null,seq=0,busy=false;
+let rows=[],selected=null,seq=0,busy=false,lastError='';
 function current(){try{return typeof currentEditInvoice!=='undefined'?currentEditInvoice:null}catch(_){return null}}
 function method(){return clean($('editPaymentMethod')?.value)}
 function bankMode(){return ['Bank','Cash + Bank','Partially Paid in Bank'].includes(method())}
@@ -106,7 +106,7 @@ function render(){
  if(!visible()||!supported())return;
  const requested=amount(),cur=currency();
  if(requested<=0){message('Enter a Bank amount first. Then click Use on an available receipt.');return}
- if(!rows.length&&!busy){message('No registered bank balance available for this customer. Check Bank Register or refresh.');return}
+ if(!rows.length&&!busy){message(lastError||'No registered bank balance available for this customer. Check Bank Register or refresh.',!!lastError);return}
  for(const item of rows){
   const bank=clean(item.currency).toUpperCase(),remaining=num(item.remaining_amount),equiv=equivalent(item);
   const allowed=eligible(item)&&equiv+0.000001>=requested;
@@ -153,7 +153,7 @@ async function load(){
  const adapter=window.BBHistoryAdapter||window.BBHistoryAllAdapter||window.BBHistoryMobileAdapter;
  if(typeof adapter?.rpc!=='function'){message('Bank service unavailable. Refresh Invoice History.',true);return}
  const token=++seq,invoiceId=clean(invoice.invoiceId);
- rows=[];busy=true;
+ rows=[];busy=true;lastError='';
  const button=$('bbInvoiceBankRefresh');if(button)button.disabled=true;
  message('Checking live bank balances for this customer…');render();
  try{
@@ -165,7 +165,8 @@ async function load(){
     'No available registered bank balance for this customer.');
  }catch(e){
   if(token!==seq)return;
-  rows=[];message('Bank balance refresh failed: '+clean(e?.message||e)+'. Existing invoice is unchanged.',true);
+  rows=[];lastError='Bank balance refresh failed: '+clean(e?.message||e)+'. Existing invoice is unchanged.';
+  message(lastError,true);
  }finally{
   if(token===seq){busy=false;if(button)button.disabled=false;render()}
  }
