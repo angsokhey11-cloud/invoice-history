@@ -16,8 +16,8 @@
 
     const mobileScope=new URLSearchParams(location.search).get('mobileScope')==='1';
     const adapterFile=mobileScope
-      ? 'supabase-history-mobile-adapter.js?v=20260926-addproduct1'
-      : 'supabase-history-all-adapter.js?v=20260924-sheetsync1';
+      ? 'supabase-history-mobile-adapter.js?v=20261112-wallet1'
+      : 'supabase-history-all-adapter.js?v=20261112-wallet1';
     const adapterObject=mobileScope
       ? 'BBHistoryMobileAdapter'
       : 'BBHistoryAllAdapter';
@@ -92,6 +92,14 @@
       +'<scr'+'ipt src="history-desktop-fit-preview-v1.js?v=20261002-headerbig2"></scr'+'ipt>'
       +html.slice(fitBody);
     }
+    // Admin registered-bank wallet picker shares Invoice Generator balances
+    // but uses its own atomic correction RPC, never a payment-label-only edit.
+    const walletBody=html.toLowerCase().lastIndexOf('</body>');
+    if(walletBody<0)throw Error('Invoice History closing body is missing for bank wallet picker.');
+    html=html.slice(0,walletBody)
+      +'<scr'+'ipt src="invoice-history-registered-wallet-v1.js?v=20261112-wallet1"></scr'+'ipt>'
+      +html.slice(walletBody);
+
     document.open();document.write(html);document.close();
   }catch(error){
     console.error(error);
