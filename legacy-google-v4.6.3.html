@@ -564,9 +564,9 @@
        ===================================================== */
     .modal-card{width:min(960px,100%)}
     .history-invoice-wrap{padding:18px;background:#eef2f7;overflow-x:hidden}
-    .history-invoice-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:12px 18px 18px;background:#eef2f7}
+    .history-invoice-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:9px;padding:12px 18px 18px;background:#eef2f7}
     .history-action-btn{min-height:44px;border:0;border-radius:9px;color:#fff;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.10)}
-    .history-action-btn:disabled{opacity:.65;cursor:wait}.history-print-btn{background:#172333}.history-save-btn{background:#2867d7}.history-telegram-btn{background:#159447}
+    .history-action-btn:disabled{opacity:.65;cursor:wait}.history-print-btn{background:#172333}.history-a5-btn{background:#6548a5}.history-save-btn{background:#2867d7}.history-telegram-btn{background:#159447}
     .history-final-invoice{width:min(794px,100%);max-width:794px;margin:0 auto;background:#fff;color:#222;border:1px solid #8f8f8f;padding:28px 30px 26px;font-family:Arial,sans-serif;overflow:hidden}
     .history-final-invoice *{box-sizing:border-box}
     .history-final-header{display:flex;justify-content:space-between;align-items:flex-start;gap:25px;min-height:78px}
@@ -1092,7 +1092,8 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
     <div id="detailContent" style="display:none;">
       <div class="history-invoice-wrap"><div id="historyInvoicePrintArea"></div></div>
       <div class="history-invoice-actions">
-        <button type="button" class="history-action-btn history-print-btn" onclick="printHistoryInvoice(event)">🖨 Print / Save PDF</button>
+        <button type="button" class="history-action-btn history-print-btn" onclick="printHistoryInvoice(event)">🖨 Print A4 / PDF</button>
+        <button type="button" class="history-action-btn history-a5-btn" onclick="printHistoryInvoiceA5(event)">🖨 A5 × 2 / A4</button>
         <button type="button" class="history-action-btn history-save-btn" onclick="saveHistoryInvoiceToDevice(event)">📱 Save to Device</button>
         <button type="button" class="history-action-btn history-telegram-btn" onclick="shareHistoryInvoiceToTelegram(event)">✈️ Share to Telegram</button>
       </div>
@@ -2170,6 +2171,82 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
     }
 </style></head><body>${invoice.outerHTML}</body></html>`);win.document.close();win.onload=()=>setTimeout(()=>{win.focus();win.print();},250);}
 
+
+  // A5 × 2 on A4 landscape: duplicate the exact invoice without changing A4/PDF or saved images.
+  function bbHistoryA5WritePrint(win, invoiceHtml, invoiceNumber, layout) {
+    const isA5 = layout !== "a4";
+    const name = String(invoiceNumber || "BIG BROTHER Invoice");
+    const title = escapeHtml(name) + (isA5 ? " - A5 x2" : " - A4");
+    const baseCss = getHistoryInvoicePrintCss();
+    const css = isA5 ? `
+      @page { size: A4 landscape; margin: 0; }
+      html,body { width:297mm; height:210mm; margin:0!important; padding:0!important; overflow:hidden; background:#fff; }
+      .bb-a5-sheet { display:grid; grid-template-columns:148.5mm 148.5mm; width:297mm; height:210mm; position:relative; background:#fff; overflow:hidden; }
+      .bb-a5-panel { width:148.5mm; height:210mm; position:relative; overflow:hidden; }
+      .bb-a5-canvas { width:794px; position:absolute; top:5mm; left:4.8mm; transform:scale(.66); transform-origin:top left; }
+      .bb-a5-canvas .history-final-invoice { width:794px!important; min-width:794px!important; max-width:794px!important; margin:0!important; border:0!important; overflow:visible!important; }
+      .bb-a5-sheet::after { content:""; position:absolute; top:5mm; bottom:5mm; left:148.5mm; border-left:1px dashed #c7cdd5; pointer-events:none; }
+      * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    ` : `
+      @page { size: A4 portrait; margin:10mm; }
+      html,body { margin:0; padding:0; background:white; overflow:visible; }
+      .history-final-invoice { margin:0 auto; width:100%; max-width:794px; overflow:visible; }
+      * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    `;
+    const body = isA5 ? `<main class="bb-a5-sheet">
+      <section class="bb-a5-panel"><div class="bb-a5-canvas">${invoiceHtml}</div></section>
+      <section class="bb-a5-panel"><div class="bb-a5-canvas">${invoiceHtml}</div></section>
+    </main>` : invoiceHtml;
+    win.document.open();
+    win.document.write(`<!doctype html><html><head><meta charset="UTF-8"><title>${title}</title><style>${baseCss}\n${css}</style></head><body>${body}</body></html>`);
+    win.document.close();
+    let started = false;
+    const ready = async () => {
+      if(started)return;
+      started = true;
+      try { if(win.document.fonts && win.document.fonts.ready)await win.document.fonts.ready; } catch(_err){}
+      if(win.closed)return;
+      // Do not cut off long invoices to force two copies onto one sheet.
+      if(isA5){
+        const doc=win.document.querySelector(".bb-a5-canvas .history-final-invoice");
+        if(doc && doc.scrollHeight > 1140){
+          alert("This invoice is too long for two A5 copies on one sheet. It will print in full A4 instead.");
+          bbHistoryA5WritePrint(win,invoiceHtml,invoiceNumber,"a4");
+          return;
+        }
+      }
+      win.focus();
+      win.print();
+    };
+    win.onload = ready;
+    setTimeout(() => { if(!win.closed && win.document.readyState==="complete")ready(); }, 250);
+  }
+  
+  function printHistoryInvoiceA5(event) {
+    if(event){event.preventDefault();event.stopPropagation();}
+    const invoice=getHistoryInvoiceElement();
+    if(!invoice){alert("Please open an invoice first.");return;}
+    const win=window.open("","_blank");
+    if(!win){alert("Please allow pop-ups to print the invoice.");return;}
+    bbHistoryA5WritePrint(win,invoice.outerHTML,currentHistoryInvoice?.invoiceNo,"a5");
+  }
+  
+  async function printInvoiceFromRowA5(invoiceNo,invoiceId) {
+    // Open immediately on the user's click: browsers block pop-ups opened after fetch.
+    const win=window.open("","_blank");
+    if(!win){alert("Please allow pop-ups to print the invoice.");return;}
+    win.document.open();
+    win.document.write('<!doctype html><html><head><meta charset="UTF-8"><title>Preparing A5 invoice</title></head><body style="font-family:Arial,sans-serif;padding:20px">Preparing invoice for A5 × 2 print…</body></html>');
+    win.document.close();
+    try {
+      const invoice=await getHistoryInvoice(invoiceNo,invoiceId);
+      bbHistoryA5WritePrint(win,buildHistoryInvoiceHtml(invoice),invoice.invoiceNo,"a5");
+    } catch(error) {
+      showError(error.message||"Unable to print invoice.");
+      if(!win.closed)win.document.body.textContent="Unable to load invoice: "+String(error.message||error);
+    }
+  }
+
   async function createHistoryInvoiceImages(){
     if(typeof html2canvas!=="function")throw new Error("Image library is not loaded.");
     const invoice=getHistoryInvoiceElement();
@@ -2438,7 +2515,8 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
     menu.innerHTML=`
       <button type="button" role="menuitem" onclick='closeRowActions(); openDetail(${jsNo},${jsId});'>👁 <span>View</span></button>
       <button type="button" role="menuitem" class="edit" onclick='closeRowActions(); adminEditInvoice(${jsNo},${jsId});'>🔒✏️ <span>Edit — Admin</span></button>
-      <button type="button" role="menuitem" class="print" onclick='closeRowActions(); printInvoiceFromRow(${jsNo},${jsId});'>🖨 <span>Print</span></button>
+      <button type="button" role="menuitem" class="print" onclick='closeRowActions(); printInvoiceFromRow(${jsNo},${jsId});'>🖨 <span>Print A4</span></button>
+      <button type="button" role="menuitem" class="print" onclick='closeRowActions(); printInvoiceFromRowA5(${jsNo},${jsId});'>🖨 <span>A5 × 2 / A4</span></button>
       <button type="button" role="menuitem" class="danger" onclick='closeRowActions(); adminDeleteInvoice(${jsNo});'>🔒🗑 <span>Delete — Admin</span></button>`;
 
     menu.classList.add("show");
