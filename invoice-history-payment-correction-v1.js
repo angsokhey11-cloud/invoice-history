@@ -43,7 +43,7 @@ function visibility(){install();const entry=$('bbPaymentCorrectionEntry');if(ent
 async function open(){
  if(document.querySelector('.bb-pc-overlay')||!current())return;
  const id=clean(current().invoiceId),a=adapter();
- if(!a?.rpc||!await a.requirePrimaryAdmin())return;
+ try{if(!a?.rpc||!await a.requirePrimaryAdmin())return}catch(e){alert(clean(e?.message||e));return}
  const overlay=document.createElement('div');overlay.className='bb-pc-overlay';
  overlay.innerHTML='<section class="bb-pc-dialog" role="dialog" aria-modal="true" aria-label="Correct Payment Method"><div class="bb-pc-header"><h2>Correct Payment Method</h2><button type="button" data-close>Close</button></div><div data-body><p>Checking original bank payment…</p></div></section>';
  document.body.appendChild(overlay);
@@ -124,7 +124,7 @@ function hook(){
  install();const original=window.openEditInvoice;
  if(typeof original==='function'&&!original.__bbPaymentCorrection){
   const wrapped=async function(...args){const out=await original.apply(this,args);visibility();return out};
-  wrapped.__bbPaymentCorrection=true;window.openEditInvoice=wrapped;
+  wrapped.__bbPaymentCorrection=true;wrapped.__bbHistoryBankWallet=Boolean(original.__bbHistoryBankWallet);wrapped.__bbAddProductWrapped=Boolean(original.__bbAddProductWrapped);window.openEditInvoice=wrapped;
  }
  visibility();
 }
