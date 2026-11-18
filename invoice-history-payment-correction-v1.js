@@ -60,9 +60,10 @@ async function open(){
   el('[data-localclose]').onclick=close;
   return;
  }
+ const queuedMode=d.queuedMode===true;
  const total=num(d.grandTotal),cur=d.currency;
  body.innerHTML=`<p><b>${esc(d.invoiceNo)}</b> · ${esc(d.invoiceDate)} · ${esc(d.customerId)}</p>
- <div class="bb-pc-details"><div class="bb-pc-line"><span>Invoice total</span><b>${money(total,cur)}</b></div>
+ ${queuedMode?'<p class="bb-pc-error"><b>Local Brain:</b> This saves a correction request only. Run Local → Cloud Upload, then Cloud → Local Refresh before using the released balance.</p>':''}<div class="bb-pc-details"><div class="bb-pc-line"><span>Invoice total</span><b>${money(total,cur)}</b></div>
  <div>Original receipt: <b>${esc(d.transactionId)}</b></div>
  <div class="bb-pc-line"><span>Available before</span><b>${money(d.remainingBefore,d.bankCurrency)}</b></div>
  <div class="bb-pc-line"><span>Release old bank amount</span><b>${money(d.releaseAmount,d.bankCurrency)}</b></div>
@@ -77,7 +78,7 @@ async function open(){
  <label class="bb-pc-confirm"><input type="checkbox" id="bbpcConfirm"> I verified the actual payment method and amount. Discard other unsaved edits in this invoice form.</label>
  <div data-error class="bb-pc-error" role="alert"></div>
  <p>Only payment records and the invoice payment balance change. Sale date, items, stock and revenue stay unchanged.</p>
- <div class="bb-pc-actions"><button type="button" data-cancel>Cancel</button><button type="button" class="bb-pc-primary" data-apply disabled>Apply Payment Correction</button></div>`;
+ <div class="bb-pc-actions"><button type="button" data-cancel>Cancel</button><button type="button" class="bb-pc-primary" data-apply disabled>${queuedMode?'Queue Payment Correction':'Apply Payment Correction'}</button></div>`;
  const method=el('#bbpcMethod'),bank=el('#bbpcBank'),cash=el('#bbpcCash'),bankAmount=el('#bbpcBankAmount'),reason=el('#bbpcReason'),confirm=el('#bbpcConfirm'),apply=el('[data-apply]'),error=el('[data-error]');
  let loading=false,loaded=false;
  function amounts(){const m=method.value;return {c:m==='Cash'?total:m==='Partially Paid in Cash'?num(cash.value):m==='Cash + Bank'?total-num(bankAmount.value):0,b:m==='Bank'?total: ['Cash + Bank','Partially Paid in Bank'].includes(m)?num(bankAmount.value):0}}
@@ -114,7 +115,13 @@ async function open(){
   const {c,b}=amounts(),payload={invoiceId:id,token:d.token,apply:true,method:method.value,reason:reason.value.trim(),cashAmount:c,bankAmount:b,transactionId:bankMode()?bank.value:''};
   let r;
   try{r=await api(payload);if(!r?.success)throw Error('Correction result could not be confirmed. Reload Invoice History before retrying.')}
-  catch(e){busy=false;error.textContent=clean(e?.message||e);apply.textContent='Apply Payment Correction';el('[data-close]').disabled=false;el('[data-cancel]').disabled=false;refresh();return}
+  catch(e){busy=false;error.textContent=clean(e?.message||e);apply.textContent=queuedMode?'Queue Payment Correction':'Apply Payment Correction';el('[data-close]').disabled=false;el('[data-cancel]').disabled=false;refresh();return}
+  if(r.queued===true){
+   busy=false;close();
+   if(typeof window.closeEditInvoice==='function')window.closeEditInvoice();
+   alert('Correction request queued: '+clean(r.requestId)+'. No payment or balance has changed. Run Local → Cloud Upload, then Cloud → Local Refresh.');
+   return;
+  }
   let backupWarning='';
   try{if(typeof a.syncInvoiceIdToSheet==='function')await a.syncInvoiceIdToSheet(id,'syncInvoiceCorrection')}
   catch(e){backupWarning=' Google Sheet backup sync failed; the Supabase correction is already saved.'}
