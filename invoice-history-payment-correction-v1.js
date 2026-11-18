@@ -55,6 +55,11 @@ async function open(){
  let d;
  try{d=await api({invoiceId:id});if(closed)return;if(!d?.token)throw Error('Correction preview was not returned.');}
  catch(e){if(!closed)fail(e);return}
+ if(d.previewOnly===true){
+  body.innerHTML='<p><b>'+esc(d.invoiceNo)+'</b> · '+esc(d.invoiceDate)+'</p><div class="bb-pc-details"><div>Original receipt: <b>'+esc(d.transactionId)+'</b></div><div class="bb-pc-line"><span>Current available</span><b>'+money(d.remainingBefore,d.bankCurrency)+'</b></div><div class="bb-pc-line"><span>Amount to release</span><b>'+money(d.releaseAmount,d.bankCurrency)+'</b></div><div class="bb-pc-line"><span>Available after release (preview)</span><b>'+money(d.remainingAfter,d.bankCurrency)+'</b></div></div><p class="bb-pc-error">'+esc(d.message||'Local correction saving is unavailable. Use Cloud Invoice History.')+'</p><p>No payment or bank balance has been changed.</p><div class="bb-pc-actions"><button type="button" data-localclose>Close</button></div>';
+  el('[data-localclose]').onclick=close;
+  return;
+ }
  const total=num(d.grandTotal),cur=d.currency;
  body.innerHTML=`<p><b>${esc(d.invoiceNo)}</b> · ${esc(d.invoiceDate)} · ${esc(d.customerId)}</p>
  <div class="bb-pc-details"><div class="bb-pc-line"><span>Invoice total</span><b>${money(total,cur)}</b></div>
