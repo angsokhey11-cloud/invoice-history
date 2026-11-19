@@ -1366,7 +1366,7 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
       if (!raw) return null;
 
       const parsed = JSON.parse(raw);
-      if (!parsed || !parsed.invoice) return null;
+      if (!parsed || !parsed.invoice || String(parsed.invoice.invoiceNo || "").trim() !== String(invoiceNo || "").trim() || (invoiceId && String(parsed.invoice.invoiceId || "").trim() !== String(invoiceId).trim())) return null;
 
       return parsed;
     } catch (_) {
@@ -1413,6 +1413,7 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
         throw new Error("Invoice detail was not returned.");
       }
 
+      if (String(data.invoice.invoiceNo || "").trim() !== String(invoiceNo || "").trim() || (invoiceId && String(data.invoice.invoiceId || "").trim() !== invoiceId)) throw new Error("Invoice identity mismatch. Refresh the invoice list and try again.");
       await enrichHistoryInvoiceFromMaster(data.invoice);
       saveHistoryDetailCache(
         data.invoice.invoiceNo || invoiceNo,
@@ -1974,9 +1975,12 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
     return invoice;
   }
 
+  let historyDetailRequestToken = 0;
   async function openDetail(invoiceNo, invoiceId) {
 
+    const requestToken = ++historyDetailRequestToken;
     hideError();
+    currentHistoryInvoice = null;
 
     $("detailModal").classList.add("show");
 
@@ -2007,7 +2011,7 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
       // Keep old detail visible while refreshing silently.
       fetchAndCacheInvoiceDetail(invoiceNo, { silent: true, invoiceId: invoiceId || "" })
         .then(invoice => {
-          if (invoice && $("detailModal").classList.contains("show")) {
+          if (invoice && requestToken === historyDetailRequestToken && $("detailModal").classList.contains("show")) {
             renderDetail(invoice);
           }
         });
@@ -2028,6 +2032,7 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
 
       const invoice = await fetchAndCacheInvoiceDetail(invoiceNo, { invoiceId: invoiceId || "" });
 
+      if (requestToken !== historyDetailRequestToken || !$("detailModal").classList.contains("show")) return;
       $("detailLoading").style.display = "none";
       $("detailContent").style.display = "block";
 
@@ -2035,6 +2040,7 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
 
     } catch (error) {
 
+      if (requestToken !== historyDetailRequestToken) return;
       console.error(error);
 
       $("detailLoading").style.display = "block";
