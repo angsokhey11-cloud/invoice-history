@@ -2209,7 +2209,42 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
     }
   `;}
 
-  function printHistoryInvoice(event){if(event){event.preventDefault();event.stopPropagation();}const invoice=getHistoryInvoiceElement();if(!invoice){alert("Please open an invoice first.");return;}const win=window.open("","_blank");if(!win){alert("Please allow pop-ups to print the invoice.");return;}win.document.open();win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(currentHistoryInvoice?.invoiceNo||"BIG BROTHER Invoice")}</title><style>${getHistoryInvoicePrintCss()}
+  function bbHistoryNativePrintAvailable(){
+    return typeof window.BBNativePrint?.postMessage==="function";
+  }
+  function bbHistoryNativeSend(html,name,layout){
+    try{window.BBNativePrint.postMessage(JSON.stringify({action:"printInvoice",html,title:name,layout}));}
+    catch(e){alert("Could not start Android printing: "+(e?.message||e));}
+  }
+  // Measure the same A5 document before submitting it to the native renderer.
+  // If the length cannot be verified, use the existing full A4 fallback.
+  function bbHistoryNativeA5(html,name,invoiceHtml){
+    const frame=document.createElement("iframe");
+    frame.setAttribute("sandbox","allow-same-origin");
+    frame.style.cssText="position:fixed;left:-10000px;top:0;width:1123px;height:794px;visibility:hidden;pointer-events:none;border:0";
+    let done=false;
+    const finish=ok=>{
+      if(done)return;done=true;clearTimeout(timer);frame.remove();
+      if(ok)bbHistoryNativeSend(html,name,"a5x2");
+      else{
+        alert("This invoice cannot safely fit two A5 copies on one sheet. It will print in full A4 instead.");
+        bbHistoryA5WritePrint(null,invoiceHtml,name,"a4");
+      }
+    };
+    const timer=setTimeout(()=>finish(false),4000);
+    frame.onload=async()=>{
+      try{
+        const doc=frame.contentDocument;
+        if(doc?.fonts?.ready)await doc.fonts.ready;
+        const item=doc?.querySelector(".bb-a5-canvas .history-final-invoice");
+        finish(!!item&&item.scrollHeight>0&&item.scrollHeight<=1140);
+      }catch(_){finish(false);}
+    };
+    frame.srcdoc=html;
+    document.body.appendChild(frame);
+  }
+
+  function printHistoryInvoice(event){if(event){event.preventDefault();event.stopPropagation();}const invoice=getHistoryInvoiceElement();if(!invoice){alert("Please open an invoice first.");return;}if(bbHistoryNativePrintAvailable()){bbHistoryA5WritePrint(null,invoice.outerHTML,currentHistoryInvoice?.invoiceNo,"a4");return;}const win=window.open("","_blank");if(!win){alert("Please allow pop-ups to print the invoice.");return;}win.document.open();win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(currentHistoryInvoice?.invoiceNo||"BIG BROTHER Invoice")}</title><style>${getHistoryInvoicePrintCss()}
 
     /* GLOBAL SALES SIDEBAR DROPDOWN */
     .nav-group { display:flex; flex-direction:column; gap:4px; }
@@ -2287,8 +2322,14 @@ ${getHistoryInvoiceA4PrintFixCss()}</style></head><body>${invoice.outerHTML}</bo
       <section class="bb-a5-panel"><div class="bb-a5-canvas">${invoiceHtml}</div></section>
       <section class="bb-a5-panel"><div class="bb-a5-canvas">${invoiceHtml}</div></section>
     </main>` : invoiceHtml;
+    const printHtml=`<!doctype html><html><head><meta charset="UTF-8"><title>${title}</title><style>${baseCss}\n${css}${isA5 ? "" : getHistoryInvoiceA4PrintFixCss()}</style></head><body>${body}</body></html>`;
+    if(bbHistoryNativePrintAvailable()){
+      if(isA5)bbHistoryNativeA5(printHtml,name,invoiceHtml);
+      else bbHistoryNativeSend(printHtml,name,"a4");
+      return;
+    }
     win.document.open();
-    win.document.write(`<!doctype html><html><head><meta charset="UTF-8"><title>${title}</title><style>${baseCss}\n${css}${isA5 ? "" : getHistoryInvoiceA4PrintFixCss()}</style></head><body>${body}</body></html>`);
+    win.document.write(printHtml);
     win.document.close();
     let started = false;
     const ready = async () => {
@@ -2316,12 +2357,18 @@ ${getHistoryInvoiceA4PrintFixCss()}</style></head><body>${invoice.outerHTML}</bo
     if(event){event.preventDefault();event.stopPropagation();}
     const invoice=getHistoryInvoiceElement();
     if(!invoice){alert("Please open an invoice first.");return;}
+    if(bbHistoryNativePrintAvailable()){bbHistoryA5WritePrint(null,invoice.outerHTML,currentHistoryInvoice?.invoiceNo,"a5");return;}
     const win=window.open("","_blank");
     if(!win){alert("Please allow pop-ups to print the invoice.");return;}
     bbHistoryA5WritePrint(win,invoice.outerHTML,currentHistoryInvoice?.invoiceNo,"a5");
   }
   
   async function printInvoiceFromRowA5(invoiceNo,invoiceId) {
+    if(bbHistoryNativePrintAvailable()){
+      try{const invoice=await getHistoryInvoice(invoiceNo,invoiceId);bbHistoryA5WritePrint(null,buildHistoryInvoiceHtml(invoice),invoice.invoiceNo,"a5");}
+      catch(error){showError(error.message||"Unable to print invoice.");}
+      return;
+    }
     // Open immediately on the user's click: browsers block pop-ups opened after fetch.
     const win=window.open("","_blank");
     if(!win){alert("Please allow pop-ups to print the invoice.");return;}
