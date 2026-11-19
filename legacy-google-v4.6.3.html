@@ -2247,6 +2247,34 @@ ${getHistoryInvoiceA4PrintFixCss()}</style></head><body>${invoice.outerHTML}</bo
       .bb-a5-panel { width:148.5mm; height:210mm; position:relative; overflow:hidden; }
       .bb-a5-canvas { width:794px; position:absolute; top:5mm; left:9mm; transform:scale(.62); transform-origin:top left; }
       .bb-a5-canvas .history-final-invoice { width:794px!important; min-width:794px!important; max-width:794px!important; margin:0!important; border:0!important; overflow:visible!important; }
+      /* A5 readability only: preserve the calibrated landscape scale and cut line. */
+      .bb-a5-canvas .history-final-company-name { font-size:27px!important; }
+      .bb-a5-canvas .history-final-company-tagline,
+      .bb-a5-canvas .history-final-header-message { font-size:12px!important; }
+      .bb-a5-canvas .history-final-title { font-size:34px!important; }
+      .bb-a5-canvas .history-final-bill,
+      .bb-a5-canvas .history-final-shipping { font-size:15px!important; line-height:1.45!important; }
+      .bb-a5-canvas .history-final-bill-label,
+      .bb-a5-canvas .history-final-shipping-label { font-size:16px!important; }
+      .bb-a5-canvas .history-final-bill-detail-row { grid-template-columns:124px 10px minmax(0,1fr)!important; }
+      .bb-a5-canvas .history-final-bill-detail-row > div:last-child { min-width:0; overflow-wrap:anywhere; }
+      .bb-a5-canvas .history-final-meta-no { font-size:25px!important; }
+      .bb-a5-canvas .history-final-meta-date { font-size:15px!important; }
+      .bb-a5-canvas .history-final-table { font-size:15px!important; }
+      .bb-a5-canvas .history-final-table td { overflow-wrap:anywhere; }
+      .bb-a5-canvas .history-final-barcode,
+      .bb-a5-canvas .history-final-product-note,
+      .bb-a5-canvas .history-final-unit { font-size:12px!important; }
+      .bb-a5-canvas .history-final-qty-unit .history-final-unit-small { font-size:10px!important; }
+      .bb-a5-canvas .history-final-notes,
+      .bb-a5-canvas .history-final-payment-box,
+      .bb-a5-canvas .history-final-bank { font-size:14px!important; }
+      .bb-a5-canvas .history-final-summary { font-size:15px!important; }
+      .bb-a5-canvas .history-final-summary-row.grand { font-size:17px!important; }
+      .bb-a5-canvas .history-final-signature-grid { font-size:14px!important; margin-top:34px!important; gap:36px!important; }
+      .bb-a5-canvas .history-final-signature-name-row { min-height:30px!important; gap:10px!important; }
+      .bb-a5-canvas .history-final-signature-line { margin-top:18px!important; }
+      .bb-a5-canvas .history-final-signature-blank { height:64px!important; }
       .bb-a5-sheet::after { content:""; position:absolute; top:5mm; bottom:5mm; left:148.5mm; border-left:1px dashed #c7cdd5; pointer-events:none; }
       * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     ` : `
