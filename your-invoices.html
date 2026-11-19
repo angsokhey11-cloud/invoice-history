@@ -19,13 +19,8 @@ html,body,input,select,textarea,td{font-family:Arial,Helvetica,'Noto Sans Khmer'
     if(!r.ok)throw new Error('Could not load Your Invoices source.');
     let html=await r.text();
 
-    const mobileRoleScope=new URLSearchParams(location.search).get('mobileRoleScope')==='1';
-    const adapterFile=mobileRoleScope
-      ? 'supabase-history-mobile-adapter.js?v=20260925-assigned2'
-      : 'supabase-your-invoices-adapter.js?v=20260921-owner1';
-    const adapterObject=mobileRoleScope
-      ? 'BBHistoryMobileAdapter'
-      : 'BBYourInvoicesAdapter';
+    const adapterFile='supabase-your-invoices-adapter.js?v=20261119-scope1';
+    const adapterObject='BBYourInvoicesAdapter';
     const adapter='<scr'+'ipt src="'+adapterFile+'"></scr'+'ipt>';
     const privacyStyle='<style>.floating-action-menu .edit,.floating-action-menu .danger{display:none!important}</style>';
     const headClose=html.toLowerCase().indexOf('</head>');
